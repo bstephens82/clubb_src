@@ -1086,15 +1086,18 @@ module stats_variables
     iC1_Skw_fnc = 0,     &
     ibrunt_vaisala_freq_sqd = 0, &
     ibrunt_vaisala_freq_sqd_splat = 0, &
-    isqrt_Ri_zm = 0, &
-    iRichardson_num = 0, &
+    ibrunt_vaisala_freq_sqd_mixed = 0, &
+    ibrunt_vaisala_freq_sqd_moist = 0, &
+    ibrunt_vaisala_freq_sqd_dry = 0, &
+    iRi_zm = 0,          &
     ishear_sqd = 0,      &
     iC6_term
 
 !$omp   threadprivate(igamma_Skw_fnc, iC6rt_Skw_fnc, iC6thl_Skw_fnc, iC6_term)
-!$omp   threadprivate(iC7_Skw_fnc, iC1_Skw_fnc, isqrt_Ri_zm)
+!$omp   threadprivate(iC7_Skw_fnc, iC1_Skw_fnc, iRi_zm)
 !$omp   threadprivate(ibrunt_vaisala_freq_sqd, ibrunt_vaisala_freq_sqd_splat)
-!$omp   threadprivate(iRichardson_num, ishear_sqd)
+!$omp   threadprivate(ibrunt_vaisala_freq_sqd_mixed, ibrunt_vaisala_freq_sqd_moist)
+!$omp   threadprivate(ibrunt_vaisala_freq_sqd_dry, ishear_sqd)
 
   integer, public :: &
     icoef_wp4_implicit = 0
@@ -1500,35 +1503,5 @@ module stats_variables
     irtp2_from_chi = 0
 
 !$omp threadprivate( irtp2_from_chi )
-
-  ! Scratch space
-
-  real( kind = core_rknd ), dimension(:), allocatable, public :: &
-    ztscr01, ztscr02, ztscr03, & 
-    ztscr04, ztscr05, ztscr06, & 
-    ztscr07, ztscr08, ztscr09, & 
-    ztscr10, ztscr11, ztscr12, & 
-    ztscr13, ztscr14, ztscr15, & 
-    ztscr16, ztscr17, ztscr18, &
-    ztscr19, ztscr20, ztscr21
-
-!$omp threadprivate(ztscr01, ztscr02, ztscr03, ztscr04, ztscr05)
-!$omp threadprivate(ztscr06, ztscr07, ztscr08, ztscr09, ztscr10)
-!$omp threadprivate(ztscr11, ztscr12, ztscr13, ztscr14, ztscr15)
-!$omp threadprivate(ztscr16, ztscr17, ztscr18, ztscr19, ztscr20)
-!$omp threadprivate(ztscr21)
-
-  real( kind = core_rknd ), dimension(:), allocatable, public :: &
-    zmscr01, zmscr02, zmscr03, &
-    zmscr04, zmscr05, zmscr06, & 
-    zmscr07, zmscr08, zmscr09, & 
-    zmscr10, zmscr11, zmscr12, & 
-    zmscr13, zmscr14, zmscr15, &
-    zmscr16, zmscr17
-
-!$omp   threadprivate(zmscr01, zmscr02, zmscr03, zmscr04, zmscr05)
-!$omp   threadprivate(zmscr06, zmscr07, zmscr08, zmscr09, zmscr10)
-!$omp   threadprivate(zmscr11, zmscr12, zmscr13, zmscr14, zmscr15)
-!$omp   threadprivate(zmscr16, zmscr17)
 
 end module stats_variables

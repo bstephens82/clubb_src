@@ -159,9 +159,8 @@ module clubb_api_module
     iC_invrs_tau_sfc, iC_invrs_tau_shear, iC_invrs_tau_N2, &
     iC_invrs_tau_N2_wp2, iC_invrs_tau_N2_xp2, iC_invrs_tau_N2_wpxp, &
     iC_invrs_tau_N2_clear_wp3, ialtitude_threshold, irtp2_clip_coef, &
-    iRichardson_num_min, iRichardson_num_max, ia3_coef_min, ia_const, iCx_min, iCx_max, &
-    iC_wp2_pr_dfsn, iC_wp3_pr_tp, iC_invrs_tau_wpxp_Ri, iC_invrs_tau_wpxp_N2_thresh, &
-    ixp3_coef_base, ixp3_coef_slope
+    iRichardson_num_min, iRichardson_num_max, iwpxp_Ri_exp, &
+    ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold
 
 
   use pdf_parameter_module, only : &
@@ -208,21 +207,7 @@ module clubb_api_module
     fname_rad_zt, & ! Name of the stats file for the stats_zt radiation grid fields
     fname_rad_zm, & ! Name of the stats file for the stats_zm radiation grid fields
     fname_sfc, & ! Name of the stats file for surface only fields
-    l_netcdf, & ! Output to NetCDF format
-    ! These are used in CAM only
-    ztscr01, ztscr02, ztscr03, &
-    ztscr04, ztscr05, ztscr06, &
-    ztscr07, ztscr08, ztscr09, &
-    ztscr10, ztscr11, ztscr12, &
-    ztscr13, ztscr14, ztscr15, &
-    ztscr16, ztscr17, ztscr18, &
-    ztscr19, ztscr20, ztscr21, &
-    zmscr01, zmscr02, zmscr03, &
-    zmscr04, zmscr05, zmscr06, &
-    zmscr07, zmscr08, zmscr09, &
-    zmscr10, zmscr11, zmscr12, &
-    zmscr13, zmscr14, zmscr15, &
-    zmscr16, zmscr17
+    l_netcdf ! Output to NetCDF format
 
   use stats_zm_module, only : &
     nvarmax_zm ! Maximum variables allowed
@@ -253,6 +238,9 @@ module clubb_api_module
 
     ! Calculates liquid water potential temperature from absolute temperature 
     T_in_K2thlm_api => T_in_K2thlm
+
+  use advance_clubb_core_module, only: &
+    setup_clubb_core_api => setup_clubb_core
 
   use stats_type, only: stats ! Type
 
@@ -292,9 +280,10 @@ module clubb_api_module
         iC_invrs_tau_sfc, iC_invrs_tau_shear, iC_invrs_tau_N2, &
         iC_invrs_tau_N2_wp2, iC_invrs_tau_N2_xp2, iC_invrs_tau_N2_wpxp, &
         iC_invrs_tau_N2_clear_wp3, ialtitude_threshold, irtp2_clip_coef, &
-        iRichardson_num_min, iRichardson_num_max, ia3_coef_min, ia_const, iCx_min, iCx_max, &
-        iC_wp2_pr_dfsn, iC_wp3_pr_tp, iC_invrs_tau_wpxp_Ri, iC_invrs_tau_wpxp_N2_thresh, &
-        ixp3_coef_base, ixp3_coef_slope
+        iRichardson_num_min, iRichardson_num_max, iwpxp_Ri_exp, &
+        ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold
+
+
 
   public &
         advance_clubb_core_api, &
@@ -486,20 +475,7 @@ module clubb_api_module
     stats_init_rad_zt_api, &
     stats_init_sfc_api, &
     stats_init_zm_api, &
-    stats_init_zt_api, &
-    zmscr01, zmscr02, zmscr03, &
-    zmscr04, zmscr05, zmscr06, &
-    zmscr07, zmscr08, zmscr09, &
-    zmscr10, zmscr11, zmscr12, &
-    zmscr13, zmscr14, zmscr15, &
-    zmscr16, zmscr17, &
-    ztscr01, ztscr02, ztscr03, &
-    ztscr04, ztscr05, ztscr06, &
-    ztscr07, ztscr08, ztscr09, &
-    ztscr10, ztscr11, ztscr12, &
-    ztscr13, ztscr14, ztscr15, &
-    ztscr16, ztscr17, ztscr18, &
-    ztscr19, ztscr20, ztscr21
+    stats_init_zt_api
 
   public &
     ! Needed to use the configurable CLUBB flags
@@ -1700,143 +1676,6 @@ contains
   end subroutine advance_clubb_core_api_multi_col
 
   !================================================================================================
-  ! setup_clubb_core - Sets up the model for execution.
-  !================================================================================================
-
-  subroutine setup_clubb_core_api( &
-    nzmax, T0_in, ts_nudge_in,                          & ! intent(in)
-    hydromet_dim_in, sclr_dim_in,                       & ! intent(in)
-    sclr_tol_in, edsclr_dim_in, params,                 & ! intent(in)
-    l_host_applies_sfc_fluxes,                          & ! intent(in)
-    saturation_formula,                                 & ! intent(in)
-    l_input_fields,                                     & ! intent(in)
-#ifdef GFDL
-    I_sat_sphum,                                        & ! intent(in)  h1g, 2010-06-16
-#endif
-    iiPDF_type,                                         & ! intent(in)
-    ipdf_call_placement,                                & ! intent(in)
-    l_predict_upwp_vpwp,                                & ! intent(in)
-    l_min_xp2_from_corr_wx,                             & ! intent(in)
-    l_prescribed_avg_deltaz,                            & ! intent(in)
-    l_damp_wp2_using_em,                                & ! intent(in)
-    l_stability_correct_tau_zm,                         & ! intent(in)
-    l_enable_relaxed_clipping,                          & ! intent(in)
-    l_diag_Lscale_from_tau,                             & ! intent(in)
-#ifdef GFDL
-    cloud_frac_min ,                                    & ! intent(in)  h1g, 2010-06-16
-#endif
-    err_code_api )             ! intent(out) 
-
-    use advance_clubb_core_module, only : setup_clubb_core
-
-    use parameter_indices, only:  &
-        nparams ! Variable(s)
-      
-    use model_flags, only: &
-        clubb_config_flags_type  ! Type
-
-! TODO: This should be called from the api, but all the host models appear to call
-!       it directly or not at all.
-!   use model_flags, only: &
-!     setup_model_flags    ! Subroutine
-
-      implicit none
-
-    ! Input Variables
-
-    integer, intent(in) :: nzmax  ! Vertical grid levels            [#]
-
-    ! Model parameters
-    real( kind = core_rknd ), intent(in) ::  &
-      T0_in, ts_nudge_in
-
-    integer, intent(in) :: &
-      hydromet_dim_in,  & ! Number of hydrometeor species
-      sclr_dim_in,      & ! Number of passive scalars
-      edsclr_dim_in       ! Number of eddy-diff. passive scalars
-
-    real( kind = core_rknd ), intent(in), dimension(sclr_dim_in) :: &
-      sclr_tol_in    ! Thresholds for passive scalars
-
-    real( kind = core_rknd ), intent(in), dimension(nparams) :: &
-      params  ! Including C1, nu1, nu2, etc.
-
-    ! Flags
-    logical, intent(in) ::  &
-      l_host_applies_sfc_fluxes ! Whether to apply for the surface flux
-
-    character(len=*), intent(in) :: &
-      saturation_formula ! Approximation for saturation vapor pressure
-
-    logical, intent(in) ::  &
-      l_input_fields    ! Flag for whether LES input fields are used
-
-    integer, intent(in) :: &
-      iiPDF_type,          & ! Selected option for the two-component normal
-                             ! (double Gaussian) PDF type to use for the w,
-                             ! rt, and theta-l (or w, chi, and eta) portion of
-                             ! CLUBB's multivariate, two-component PDF.
-      ipdf_call_placement    ! Selected option for the placement of the call to
-                             ! CLUBB's PDF.
-
-    logical, intent(in) :: &
-      l_predict_upwp_vpwp,         & ! Flag to predict <u'w'> and <v'w'> along with <u> and <v>
-                                     ! alongside the advancement of <rt>, <w'rt'>, <thl>, <wpthlp>,
-                                     ! <sclr>, and <w'sclr'> in subroutine advance_xm_wpxp.
-                                     ! Otherwise, <u'w'> and <v'w'> are still approximated by eddy
-                                     ! diffusivity when <u> and <v> are advanced in subroutine
-                                     ! advance_windm_edsclrm.
-      l_min_xp2_from_corr_wx,     & ! Flag to base the threshold minimum value of xp2 (rtp2 and
-                                    ! thlp2) on keeping the overall correlation of w and x within
-                                    ! the limits of -max_mag_correlation_flux to
-                                    ! max_mag_correlation_flux.
-      l_prescribed_avg_deltaz,    & ! used in adj_low_res_nu. If .true., avg_deltaz = deltaz
-      l_damp_wp2_using_em,        &
-      l_stability_correct_tau_zm, &
-      l_enable_relaxed_clipping,  & ! Flag to relax clipping on wpxp in
-                                    ! xm_wpxp_clipping_and_stats
-      l_diag_Lscale_from_tau        ! First diagnose dissipation time tau, and
-                                    ! then diagnose the mixing length scale as
-                                    ! Lscale = tau * tke
-
-#ifdef GFDL
-      logical, intent(in) :: &  ! h1g, 2010-06-16 begin mod
-         I_sat_sphum
-
-      real( kind = core_rknd ), intent(in) :: &
-         cloud_frac_min         ! h1g, 2010-06-16 end mod
-#endif
-
-    integer, intent(out) :: & 
-      err_code_api   ! Diagnostic for a problem with the setup 
-
-    call setup_clubb_core(  &
-      nzmax, T0_in, ts_nudge_in,                            & ! intent(in)
-      hydromet_dim_in, sclr_dim_in,                         & ! intent(in)
-      sclr_tol_in, edsclr_dim_in, params,                   & ! intent(in)
-      l_host_applies_sfc_fluxes,                            & ! intent(in)
-      saturation_formula,                                   & ! intent(in)
-      l_input_fields,                                       & ! intent(in)
-#ifdef GFDL
-      I_sat_sphum,                                          & ! intent(in)  h1g, 2010-06-16
-#endif
-      iiPDF_type,                                           & ! intent(in)
-      ipdf_call_placement,                                  & ! intent(in)
-      l_predict_upwp_vpwp,                                  & ! intent(in)
-      l_min_xp2_from_corr_wx,                               & ! intent(in)
-      l_prescribed_avg_deltaz,                              & ! intent(in)
-      l_damp_wp2_using_em,                                  & ! intent(in)
-      l_stability_correct_tau_zm,                           & ! intent(in)
-      l_enable_relaxed_clipping,                            & ! intent(in)
-      l_diag_Lscale_from_tau,                               & ! intent(in)
-#ifdef GFDL
-      cloud_frac_min,                                       & ! intent(in)  h1g, 2010-06-16
-#endif
-      err_code_api )                                          ! intent(out)
-
-  end subroutine setup_clubb_core_api
-
-  !================================================================================================
   ! cleanup_clubb_core_api - Frees memory used by the model.
   !================================================================================================
 
@@ -2530,8 +2369,8 @@ contains
                                   C_invrs_tau_N2_wp2, C_invrs_tau_N2_xp2, &
                                   C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                                   C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
-                                  Cx_min, Cx_max, Richardson_num_min, &
-                                  Richardson_num_max, a3_coef_min, a_const, &
+                                  Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
+                                  wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, &
                                   params )
 
     use parameters_tunable, only : read_parameters
@@ -2568,7 +2407,8 @@ contains
       C_invrs_tau_shear, C_invrs_tau_N2, C_invrs_tau_N2_wp2, &
       C_invrs_tau_N2_xp2, C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
       C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
-      Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, a3_coef_min, a_const
+      Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
+      wpxp_Ri_exp, a3_coef_min, a_const, bv_efold
 
     ! Output variables
     real( kind = core_rknd ), intent(out), dimension(nparams) :: params
@@ -2596,8 +2436,8 @@ contains
                           C_invrs_tau_N2_wp2, C_invrs_tau_N2_xp2, &
                           C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                           C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
-                          Cx_min, Cx_max, Richardson_num_min, &
-                          Richardson_num_max, a3_coef_min, a_const, &
+                          Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
+                          wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, &
                           params ) ! intent(out)
 
   end subroutine read_parameters_api
@@ -4013,7 +3853,7 @@ contains
   !================================================================================================
   ! calculate_thlp2_rad - Computes the contribution of radiative cooling to thlp2
   !================================================================================================
-  pure subroutine calculate_thlp2_rad_api &
+  subroutine calculate_thlp2_rad_api &
                   ( nz, rcm_zm, thlprcp, radht_zm, & ! Intent(in)
                     clubb_params,                  & ! Intent(in)
                     thlp2_forcing )                  ! Intent(inout)
@@ -4416,8 +4256,8 @@ contains
                C_invrs_tau_N2_wp2, C_invrs_tau_N2_xp2, &
                C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
-               Cx_min, Cx_max, Richardson_num_min, &
-               Richardson_num_max, a3_coef_min, a_const )
+               Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
+               wpxp_Ri_exp, a3_coef_min, a_const, bv_efold )
 
     use parameters_tunable, only: &
         set_default_parameters    ! Procedure(s)
@@ -4446,7 +4286,8 @@ contains
       C_invrs_tau_shear, C_invrs_tau_N2, C_invrs_tau_N2_wp2, &
       C_invrs_tau_N2_xp2, C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
       C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
-      Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, a3_coef_min, a_const
+      Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
+      wpxp_Ri_exp, a3_coef_min, a_const, bv_efold
 
     call set_default_parameters( &
                C1, C1b, C1c, C2rt, C2thl, C2rtthl, &
@@ -4471,8 +4312,8 @@ contains
                C_invrs_tau_N2_wp2, C_invrs_tau_N2_xp2, &
                C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
-               Cx_min, Cx_max, Richardson_num_min, &
-               Richardson_num_max, a3_coef_min, a_const )
+               Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
+               wpxp_Ri_exp, a3_coef_min, a_const, bv_efold )
 
     return
 

@@ -413,17 +413,17 @@ module advance_wp2_wp3_module
 
     integer :: k, i, b
 
-    !$acc declare create( wp2_old, wp3_old, C1_Skw_fnc, C11_Skw_fnc, C16_fnc, &
-    !$acc                 wp3_term_ta_lhs_result, wp3_pr3_lhs, lhs_ta_wp2, &
-    !$acc                 lhs_tp_wp3, lhs_adv_tp_wp3, lhs_pr_tp_wp3, &
-    !$acc                 lhs_ta_wp3, lhs_dp1_wp2, rhs_dp1_wp2, lhs_pr1_wp2, &
-    !$acc                 rhs_pr1_wp2, lhs_pr1_wp3, rhs_pr1_wp3, rhs_bp_pr2_wp2, &
-    !$acc                 rhs_pr_dfsn_wp2, rhs_bp1_pr2_wp3, rhs_pr3_wp2, &
-    !$acc                 rhs_pr3_wp3, rhs_ta_wp3, rhs_pr_turb_wp3, rhs_pr_dfsn_wp3, &
-    !$acc                 lhs_diff_zm, lhs_diff_zt, lhs_diff_zm_crank, lhs_diff_zt_crank, &
-    !$acc                 lhs_ma_zm, lhs_ma_zt, lhs_ac_pr2_wp2, lhs_ac_pr2_wp3, &
-    !$acc                 coef_wp4_implicit_zt, coef_wp4_implicit, a1, a1_zt, &
-    !$acc                 dum_dz, dvm_dz, lhs, rhs, Kw1, Kw8, Kw1_zm, Kw8_zt )
+    !$acc enter data create( wp2_old, wp3_old, C1_Skw_fnc, C11_Skw_fnc, C16_fnc, &
+    !$acc                    wp3_term_ta_lhs_result, wp3_pr3_lhs, lhs_ta_wp2, &
+    !$acc                    lhs_tp_wp3, lhs_adv_tp_wp3, lhs_pr_tp_wp3, &
+    !$acc                    lhs_ta_wp3, lhs_dp1_wp2, rhs_dp1_wp2, lhs_pr1_wp2, &
+    !$acc                    rhs_pr1_wp2, lhs_pr1_wp3, rhs_pr1_wp3, rhs_bp_pr2_wp2, &
+    !$acc                    rhs_pr_dfsn_wp2, rhs_bp1_pr2_wp3, rhs_pr3_wp2, &
+    !$acc                    rhs_pr3_wp3, rhs_ta_wp3, rhs_pr_turb_wp3, rhs_pr_dfsn_wp3, &
+    !$acc                    lhs_diff_zm, lhs_diff_zt, lhs_diff_zm_crank, lhs_diff_zt_crank, &
+    !$acc                    lhs_ma_zm, lhs_ma_zt, lhs_ac_pr2_wp2, lhs_ac_pr2_wp3, &
+    !$acc                    coef_wp4_implicit_zt, coef_wp4_implicit, a1, a1_zt, &
+    !$acc                    dum_dz, dvm_dz, lhs, rhs, Kw1, Kw8, Kw1_zm, Kw8_zt )
 
     !-----------------------------------------------------------------------
 
@@ -1160,6 +1160,18 @@ module advance_wp2_wp3_module
       end if ! fatal error
     end if
 
+    !$acc exit data delete( wp2_old, wp3_old, C1_Skw_fnc, C11_Skw_fnc, C16_fnc, &
+    !$acc                   wp3_term_ta_lhs_result, wp3_pr3_lhs, lhs_ta_wp2, &
+    !$acc                   lhs_tp_wp3, lhs_adv_tp_wp3, lhs_pr_tp_wp3, &
+    !$acc                   lhs_ta_wp3, lhs_dp1_wp2, rhs_dp1_wp2, lhs_pr1_wp2, &
+    !$acc                   rhs_pr1_wp2, lhs_pr1_wp3, rhs_pr1_wp3, rhs_bp_pr2_wp2, &
+    !$acc                   rhs_pr_dfsn_wp2, rhs_bp1_pr2_wp3, rhs_pr3_wp2, &
+    !$acc                   rhs_pr3_wp3, rhs_ta_wp3, rhs_pr_turb_wp3, rhs_pr_dfsn_wp3, &
+    !$acc                   lhs_diff_zm, lhs_diff_zt, lhs_diff_zm_crank, lhs_diff_zt_crank, &
+    !$acc                   lhs_ma_zm, lhs_ma_zt, lhs_ac_pr2_wp2, lhs_ac_pr2_wp3, &
+    !$acc                   coef_wp4_implicit_zt, coef_wp4_implicit, a1, a1_zt, &
+    !$acc                   dum_dz, dvm_dz, lhs, rhs, Kw1, Kw8, Kw1_zm, Kw8_zt )
+
     return
 
   end subroutine advance_wp2_wp3
@@ -1392,9 +1404,7 @@ module advance_wp2_wp3_module
 
     !------------------------- Begin Code -------------------------
 
-    !$acc declare create( rhs_save, solut, old_solut, rcond, &
-    !$acc                 lhs_wp3_ac_term, lhs_wp3_pr2_term, &
-    !$acc                 threshold_array ) 
+    !$acc enter data create( rhs_save, solut, old_solut, rcond, threshold_array ) 
 
     ! Save the value of rhs, which will be overwritten with the solution as
     ! part of the solving routine.
@@ -1488,10 +1498,9 @@ module advance_wp2_wp3_module
     if ( l_stats_samp ) then
 
       !$acc update host( wm_zt, lhs_dp1_wp2, wp2, lhs_diff_zm, lhs_ta_wp2, &
-      !$acc              wp3, lhs_ma_zm, lhs_pr1_wp2, lhs_wp3_ac_term, &
-      !$acc              lhs_wp3_pr2_term, lhs_pr1_wp3, lhs_diff_zt, &
+      !$acc              wp3, lhs_ma_zm, lhs_pr1_wp2, lhs_pr1_wp3, lhs_diff_zt, &
       !$acc              wp3_term_ta_lhs_result, lhs_adv_tp_wp3, lhs_pr_tp_wp3, &
-      !$acc              wp3_pr3_lhs, lhs_ma_zt )
+      !$acc              wp3_pr3_lhs, lhs_ma_zt, C11_Skw_fnc, wm_zm )
       
       C_uu_shr = clubb_params(iC_uu_shr)
       
@@ -1818,6 +1827,8 @@ module advance_wp2_wp3_module
     ! Compute wp3_zm for output purposes
     wp3_zm(:,:) = zt2zm( nz, ngrdcol, gr, wp3 )
 
+    !$acc exit data delete( rhs_save, solut, old_solut, rcond, threshold_array ) 
+
     return
 
   end subroutine wp23_solve
@@ -1974,7 +1985,6 @@ module advance_wp2_wp3_module
       do i = 1, ngrdcol
 
         k_wp3 = 2*k - 1
-        k_wp2 = 2*k
 
         ! ------ w'3 ------
 
@@ -2007,8 +2017,16 @@ module advance_wp2_wp3_module
 
         ! LHS mean advection (ma) and diffusion (diff) terms
         lhs(5,i,k_wp3) = lhs(5,i,k_wp3) + lhs_ma_zt(3,i,k) + lhs_diff_zt(3,i,k)
+      end do
+    end do
+    !$acc end parallel loop
 
+    !$acc parallel loop gang vector collapse(2) default(present)
+    do k = 2, nz-1, 1
+      do i = 1, ngrdcol
 
+        k_wp2 = 2*k
+        
         ! ------ w'2 ------
 
         ! LHS mean advection (ma) and diffusion (diff) terms
@@ -2462,7 +2480,6 @@ module advance_wp2_wp3_module
       do i = 1, ngrdcol
         
         k_wp3 = 2*k - 1
-        k_wp2 = 2*k
 
         ! ------ Combine terms for 3rd moment of vertical velocity, <w'^3> ------ !
 
@@ -2483,7 +2500,16 @@ module advance_wp2_wp3_module
         ! RHS "over implicit" pressure term 1 (pr1).
         rhs(i,k_wp3)  = rhs(i,k_wp3) + ( one - gamma_over_implicit_ts ) &
                                        * ( - lhs_pr1_wp3(i,k) * wp3(i,k) )
+      end do
+    end do
+    !$acc end parallel loop
 
+
+    !$acc parallel loop gang vector collapse(2) default(present)
+    do k = 2, nz-1
+      do i = 1, ngrdcol
+
+        k_wp2 = 2*k
 
         ! ------ Combine terms for 2nd moment of vertical velocity, <w'^2> ------ !
 
@@ -2895,7 +2921,7 @@ module advance_wp2_wp3_module
   end subroutine wp23_rhs
 
   !=============================================================================
-  pure subroutine wp2_term_ta_lhs( nz, ngrdcol, gr, &
+  subroutine wp2_term_ta_lhs( nz, ngrdcol, gr, &
                                    rho_ds_zt, invrs_rho_ds_zm, &
                                    lhs_ta_wp2 )
 
@@ -3016,7 +3042,7 @@ module advance_wp2_wp3_module
   end subroutine wp2_term_ta_lhs
 
   !=============================================================================
-  pure subroutine wp2_terms_ac_pr2_lhs( nz, ngrdcol, gr, C_uu_shr, wm_zt, &
+  subroutine wp2_terms_ac_pr2_lhs( nz, ngrdcol, gr, C_uu_shr, wm_zt, &
                                         lhs_ac_pr2_wp2 )
 
     ! Description:
@@ -3136,7 +3162,7 @@ module advance_wp2_wp3_module
   end subroutine wp2_terms_ac_pr2_lhs
 
   !=============================================================================
-  pure subroutine wp2_term_dp1_lhs( nz, ngrdcol, &
+  subroutine wp2_term_dp1_lhs( nz, ngrdcol, &
                                     C1_Skw_fnc, invrs_tau1m, &
                                     lhs_dp1_wp2 )
 
@@ -3230,7 +3256,7 @@ module advance_wp2_wp3_module
   end subroutine wp2_term_dp1_lhs
 
   !=============================================================================
-  pure subroutine wp2_term_pr1_lhs( nz, ngrdcol, C4, invrs_tau_C4_zm, &
+  subroutine wp2_term_pr1_lhs( nz, ngrdcol, C4, invrs_tau_C4_zm, &
                                     lhs_pr1_wp2 )
 
     ! Description
@@ -3331,7 +3357,7 @@ module advance_wp2_wp3_module
   end subroutine wp2_term_pr1_lhs
 
   !=============================================================================
-  pure subroutine wp2_terms_bp_pr2_rhs( nz, ngrdcol, C_uu_buoy, &
+  subroutine wp2_terms_bp_pr2_rhs( nz, ngrdcol, C_uu_buoy, &
                                         thv_ds_zm, wpthvp, &
                                         rhs_bp_pr2_wp2 )
 
@@ -3424,7 +3450,7 @@ module advance_wp2_wp3_module
   end subroutine wp2_terms_bp_pr2_rhs
 
   !=============================================================================
-  pure subroutine wp2_term_dp1_rhs( nz, ngrdcol, C1_Skw_fnc, &
+  subroutine wp2_term_dp1_rhs( nz, ngrdcol, C1_Skw_fnc, &
                                     invrs_tau1m, threshold, up2, vp2, &
                                     l_damp_wp2_using_em, &
                                     rhs_dp1_wp2 )
@@ -3536,7 +3562,7 @@ module advance_wp2_wp3_module
   end subroutine wp2_term_dp1_rhs
 
   !=============================================================================
-  pure subroutine wp2_term_pr3_rhs( nz, ngrdcol, gr, C_uu_shr, C_uu_buoy, &
+  subroutine wp2_term_pr3_rhs( nz, ngrdcol, gr, C_uu_shr, C_uu_buoy, &
                                     thv_ds_zm, wpthvp, upwp, &
                                     um, vpwp, vm, &
                                     rhs_pr3_wp2 )
@@ -3674,7 +3700,7 @@ module advance_wp2_wp3_module
   end subroutine wp2_term_pr3_rhs
 
   !=============================================================================
-  pure subroutine wp2_term_pr1_rhs( nz, ngrdcol, C4, &
+  subroutine wp2_term_pr1_rhs( nz, ngrdcol, C4, &
                                     up2, vp2, invrs_tau_C4_zm, &
                                     rhs_pr1_wp2 )
 
@@ -3767,7 +3793,7 @@ module advance_wp2_wp3_module
   end subroutine wp2_term_pr1_rhs
 
   !=============================================================================
-  pure subroutine wp2_term_pr_dfsn_rhs( nz, ngrdcol, gr, C_wp2_pr_dfsn, &
+  subroutine wp2_term_pr_dfsn_rhs( nz, ngrdcol, gr, C_wp2_pr_dfsn, &
                                         rho_ds_zt, invrs_rho_ds_zm, &
                                         wpup2, wpvp2, wp3, &
                                         rhs_pr_dfsn_wp2 )
@@ -3876,7 +3902,7 @@ module advance_wp2_wp3_module
   end subroutine wp2_term_pr_dfsn_rhs
 
   !=============================================================================
-  pure subroutine wp3_term_ta_new_pdf_lhs( nz, ngrdcol, gr, coef_wp4_implicit, &
+  subroutine wp3_term_ta_new_pdf_lhs( nz, ngrdcol, gr, coef_wp4_implicit, &
                                            wp2, rho_ds_zm, invrs_rho_ds_zt, &
                                            lhs_ta_wp3 )
 
@@ -4036,7 +4062,7 @@ module advance_wp2_wp3_module
   end subroutine wp3_term_ta_new_pdf_lhs
 
   !=============================================================================
-  pure subroutine wp3_term_ta_ADG1_lhs( nz, ngrdcol, gr, &
+  subroutine wp3_term_ta_ADG1_lhs( nz, ngrdcol, gr, &
                                         wp2, a1, a1_zt, a3, a3_zt, &
                                         wp3_on_wp2, rho_ds_zm, &
                                         rho_ds_zt, invrs_rho_ds_zt, &
@@ -4373,7 +4399,7 @@ module advance_wp2_wp3_module
   end subroutine wp3_term_ta_ADG1_lhs
 
   !=============================================================================
-  pure subroutine wp3_term_tp_lhs( nz, ngrdcol, gr, coef_wp3_tp, & 
+  subroutine wp3_term_tp_lhs( nz, ngrdcol, gr, coef_wp3_tp, & 
                                    wp2, rho_ds_zm, invrs_rho_ds_zt, &
                                    lhs_tp_wp3 )
 
@@ -4525,7 +4551,7 @@ module advance_wp2_wp3_module
   end subroutine wp3_term_tp_lhs
 
   !=============================================================================
-  pure subroutine wp3_terms_ac_pr2_lhs( nz, ngrdcol, gr, C11_Skw_fnc, wm_zm, &
+  subroutine wp3_terms_ac_pr2_lhs( nz, ngrdcol, gr, C11_Skw_fnc, wm_zm, &
                                         lhs_ac_pr2_wp3 )
 
     ! Description:
@@ -4644,7 +4670,7 @@ module advance_wp2_wp3_module
   end subroutine wp3_terms_ac_pr2_lhs
 
   !=============================================================================
-  pure subroutine wp3_term_pr1_lhs( nz, ngrdcol, C8, C8b, &
+  subroutine wp3_term_pr1_lhs( nz, ngrdcol, C8, C8b, &
                                     invrs_tau_wp3_zt, Skw_zt, &
                                     l_damp_wp3_Skw_squared, &
                                     lhs_pr1_wp3 )
@@ -4776,7 +4802,7 @@ module advance_wp2_wp3_module
   end subroutine wp3_term_pr1_lhs
 
   !=============================================================================
-  pure subroutine wp3_term_ta_explicit_rhs( nz, ngrdcol, gr, &
+  subroutine wp3_term_ta_explicit_rhs( nz, ngrdcol, gr, &
                                             wp4, rho_ds_zm, invrs_rho_ds_zt, &
                                             rhs_ta_wp3 )
 
@@ -4887,7 +4913,7 @@ module advance_wp2_wp3_module
   end subroutine wp3_term_ta_explicit_rhs
 
   !=============================================================================
-  pure subroutine wp3_terms_bp1_pr2_rhs( nz, ngrdcol, C11_Skw_fnc, &
+  subroutine wp3_terms_bp1_pr2_rhs( nz, ngrdcol, C11_Skw_fnc, &
                                          thv_ds_zt, wp2thvp, &
                                          rhs_bp1_pr2_wp3 )
 
@@ -4975,7 +5001,7 @@ module advance_wp2_wp3_module
   end subroutine wp3_terms_bp1_pr2_rhs
 
   !=============================================================================
-  pure subroutine wp3_term_pr_turb_rhs( nz, ngrdcol, gr, C_wp3_pr_turb, Kh_zt, wpthvp, &
+  subroutine wp3_term_pr_turb_rhs( nz, ngrdcol, gr, C_wp3_pr_turb, Kh_zt, wpthvp, &
                                         dum_dz, dvm_dz, &
                                         upwp, vpwp, &
                                         thv_ds_zt, &
@@ -5095,7 +5121,7 @@ module advance_wp2_wp3_module
   end subroutine wp3_term_pr_turb_rhs
 
   !=============================================================================
-  pure subroutine wp3_term_pr_dfsn_rhs( nz, ngrdcol, gr, C_wp3_pr_dfsn, &
+  subroutine wp3_term_pr_dfsn_rhs( nz, ngrdcol, gr, C_wp3_pr_dfsn, &
                                         rho_ds_zm, invrs_rho_ds_zt, &
                                         wp2up2, wp2vp2, wp4, &
                                         up2, vp2, wp2, &
@@ -5209,7 +5235,7 @@ module advance_wp2_wp3_module
   end subroutine wp3_term_pr_dfsn_rhs
 
   !=============================================================================
-  pure subroutine wp3_term_pr1_rhs( nz, ngrdcol, gr, C8, C8b, &
+  subroutine wp3_term_pr1_rhs( nz, ngrdcol, gr, C8, C8b, &
                                     invrs_tau_wp3_zt, Skw_zt, wp3, &
                                     l_damp_wp3_Skw_squared, &
                                     rhs_pr1_wp3 )
