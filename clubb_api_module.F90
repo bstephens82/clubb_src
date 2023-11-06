@@ -160,7 +160,9 @@ module clubb_api_module
     iC_invrs_tau_N2_wp2, iC_invrs_tau_N2_xp2, iC_invrs_tau_N2_wpxp, &
     iC_invrs_tau_N2_clear_wp3, ialtitude_threshold, irtp2_clip_coef, &
     iRichardson_num_min, iRichardson_num_max, iwpxp_Ri_exp, &
-    ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold
+    ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold, iC_wp2_pr_dfsn, &
+    ixp3_coef_slope, ixp3_coef_base, iC_wp3_pr_tp, iC_invrs_tau_wpxp_N2_thresh, &
+    iC_invrs_tau_wpxp_Ri
 
 
   use pdf_parameter_module, only : &
@@ -281,7 +283,10 @@ module clubb_api_module
         iC_invrs_tau_N2_wp2, iC_invrs_tau_N2_xp2, iC_invrs_tau_N2_wpxp, &
         iC_invrs_tau_N2_clear_wp3, ialtitude_threshold, irtp2_clip_coef, &
         iRichardson_num_min, iRichardson_num_max, iwpxp_Ri_exp, &
-        ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold
+        ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold, iC_wp2_pr_dfsn, &
+        ixp3_coef_slope, ixp3_coef_base, iC_wp3_pr_tp, iC_invrs_tau_wpxp_N2_thresh, &
+        iC_invrs_tau_wpxp_Ri
+
 
 
 
