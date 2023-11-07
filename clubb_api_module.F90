@@ -209,7 +209,20 @@ module clubb_api_module
     fname_rad_zt, & ! Name of the stats file for the stats_zt radiation grid fields
     fname_rad_zm, & ! Name of the stats file for the stats_zm radiation grid fields
     fname_sfc, & ! Name of the stats file for surface only fields
-    l_netcdf ! Output to NetCDF format
+    l_netcdf, & ! Output to NetCDF format
+    ztscr01, ztscr02, ztscr03, &
+    ztscr04, ztscr05, ztscr06, &
+    ztscr07, ztscr08, ztscr09, &
+    ztscr10, ztscr11, ztscr12, &
+    ztscr13, ztscr14, ztscr15, &
+    ztscr16, ztscr17, ztscr18, &
+    ztscr19, ztscr20, ztscr21, &
+    zmscr01, zmscr02, zmscr03, &
+    zmscr04, zmscr05, zmscr06, &
+    zmscr07, zmscr08, zmscr09, &
+    zmscr10, zmscr11, zmscr12, &
+    zmscr13, zmscr14, zmscr15, &
+    zmscr16, zmscr17
 
   use stats_zm_module, only : &
     nvarmax_zm ! Maximum variables allowed
@@ -480,7 +493,21 @@ module clubb_api_module
     stats_init_rad_zt_api, &
     stats_init_sfc_api, &
     stats_init_zm_api, &
-    stats_init_zt_api
+    stats_init_zt_api, &
+    zmscr01, zmscr02, zmscr03, &
+    zmscr04, zmscr05, zmscr06, &
+    zmscr07, zmscr08, zmscr09, &
+    zmscr10, zmscr11, zmscr12, &
+    zmscr13, zmscr14, zmscr15, &
+    zmscr16, zmscr17, &
+    ztscr01, ztscr02, ztscr03, &
+    ztscr04, ztscr05, ztscr06, &
+    ztscr07, ztscr08, ztscr09, &
+    ztscr10, ztscr11, ztscr12, &
+    ztscr13, ztscr14, ztscr15, &
+    ztscr16, ztscr17, ztscr18, &
+    ztscr19, ztscr20, ztscr21
+
 
   public &
     ! Needed to use the configurable CLUBB flags
