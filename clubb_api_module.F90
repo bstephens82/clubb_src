@@ -162,7 +162,7 @@ module clubb_api_module
     iRichardson_num_min, iRichardson_num_max, iwpxp_Ri_exp, &
     ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold, iC_wp2_pr_dfsn, &
     ixp3_coef_slope, ixp3_coef_base, iC_wp3_pr_tp, iC_invrs_tau_wpxp_N2_thresh, &
-    iC_invrs_tau_wpxp_Ri
+    iC_invrs_tau_wpxp_Ri, iz_displace
 
 
   use pdf_parameter_module, only : &
@@ -285,7 +285,7 @@ module clubb_api_module
         iRichardson_num_min, iRichardson_num_max, iwpxp_Ri_exp, &
         ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold, iC_wp2_pr_dfsn, &
         ixp3_coef_slope, ixp3_coef_base, iC_wp3_pr_tp, iC_invrs_tau_wpxp_N2_thresh, &
-        iC_invrs_tau_wpxp_Ri
+        iC_invrs_tau_wpxp_Ri, iz_displace
 
 
 
@@ -2375,7 +2375,7 @@ contains
                                   C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                                   C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                                   Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
-                                  wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, &
+                                  wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, z_displace, &
                                   params )
 
     use parameters_tunable, only : read_parameters
@@ -2413,7 +2413,7 @@ contains
       C_invrs_tau_N2_xp2, C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
       C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
       Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
-      wpxp_Ri_exp, a3_coef_min, a_const, bv_efold
+      wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, z_displace
 
     ! Output variables
     real( kind = core_rknd ), intent(out), dimension(nparams) :: params
@@ -2442,7 +2442,7 @@ contains
                           C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                           C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                           Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
-                          wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, &
+                          wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, z_displace, &
                           params ) ! intent(out)
 
   end subroutine read_parameters_api
@@ -4262,7 +4262,7 @@ contains
                C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
-               wpxp_Ri_exp, a3_coef_min, a_const, bv_efold )
+               wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, z_displace )
 
     use parameters_tunable, only: &
         set_default_parameters    ! Procedure(s)
@@ -4292,7 +4292,7 @@ contains
       C_invrs_tau_N2_xp2, C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
       C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
       Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
-      wpxp_Ri_exp, a3_coef_min, a_const, bv_efold
+      wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, z_displace
 
     call set_default_parameters( &
                C1, C1b, C1c, C2rt, C2thl, C2rtthl, &
@@ -4318,7 +4318,7 @@ contains
                C_invrs_tau_N2_wpxp, C_invrs_tau_N2_clear_wp3, &
                C_invrs_tau_wpxp_Ri, C_invrs_tau_wpxp_N2_thresh, &
                Cx_min, Cx_max, Richardson_num_min, Richardson_num_max, &
-               wpxp_Ri_exp, a3_coef_min, a_const, bv_efold )
+               wpxp_Ri_exp, a3_coef_min, a_const, bv_efold, z_displace )
 
     return
 
