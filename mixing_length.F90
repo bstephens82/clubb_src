@@ -17,6 +17,7 @@ module mixing_length
   subroutine compute_mixing_length( nz, ngrdcol, gr, thvm, thlm, &
                                     rtm, em, Lscale_max, p_in_Pa, &
                                     exner, thv_ds, mu, lmin, l_implemented, &
+                                    stats_metadata, &
                                     Lscale, Lscale_up, Lscale_down )
 
     ! Description:
@@ -138,6 +139,8 @@ module mixing_length
     use saturation, only:  &
         sat_mixrat_liq ! Procedure(s)
         
+    use stats_variables, only: & 
+        stats_metadata_type
 
     implicit none
 
@@ -180,6 +183,9 @@ module mixing_length
       Lscale,    & ! Mixing length      [m]
       Lscale_up, & ! Mixing length up   [m]
       Lscale_down  ! Mixing length down [m]
+
+    type (stats_metadata_type), intent(in) :: &
+      stats_metadata
 
     !--------------------------------- Local Variables ---------------------------------
 
@@ -871,6 +877,7 @@ module mixing_length
                                     pdf_params, em, thv_ds_zt, Lscale_max, lmin, &
                                     clubb_params, &
                                     l_Lscale_plume_centered, &
+                                    stats_metadata, &
                                     stats_zt, & 
                                     Lscale, Lscale_up, Lscale_down)
 
@@ -895,14 +902,10 @@ module mixing_length
         core_rknd
 
     use stats_variables, only: &
-        l_stats_samp
+        stats_metadata_type
 
     use pdf_parameter_module, only: &
         pdf_parameter
-
-    use stats_variables, only: &
-        iLscale_pert_1, & ! Variable(s)
-        iLscale_pert_2
 
     use stats_type_utilities, only:   &
         stat_update_var
@@ -915,7 +918,8 @@ module mixing_length
     use constants_clubb, only:  &
         fstderr  ! Variable(s)
 
-    use stats_type, only: stats ! Type
+    use stats_type, only: &
+        stats ! Type
 
     implicit none
 
@@ -958,6 +962,9 @@ module mixing_length
 
     logical, intent(in) :: &
       l_Lscale_plume_centered    ! Alternate that uses the PDF to compute the perturbed values
+
+    type (stats_metadata_type), intent(in) :: &
+      stats_metadata
 
     !--------------------------------- InOut Variables ---------------------------------
     type (stats), target, dimension(ngrdcol), intent(inout) :: &
@@ -1059,6 +1066,7 @@ module mixing_length
       call compute_mixing_length( nz, ngrdcol, gr, thvm, thlm_pert_1,  & ! In
                     rtm_pert_1, em, Lscale_max, p_in_Pa,               & ! In
                     exner, thv_ds_zt, mu_pert_1, lmin, l_implemented,  & ! In
+                    stats_metadata,                                    & ! In
                     Lscale_pert_1, Lscale_up, Lscale_down )              ! Out
 
 
@@ -1088,6 +1096,7 @@ module mixing_length
       call compute_mixing_length( nz, ngrdcol, gr, thvm, thlm_pert_2, & ! In
                     rtm_pert_2, em, Lscale_max, p_in_Pa,              & ! In
                     exner, thv_ds_zt, mu_pert_2, lmin, l_implemented, & ! In
+                    stats_metadata,                                   & ! In
                     Lscale_pert_2, Lscale_up, Lscale_down )             ! Out
 
     else if ( l_avg_Lscale .and. l_Lscale_plume_centered ) then
@@ -1155,11 +1164,13 @@ module mixing_length
       call compute_mixing_length( nz, ngrdcol, gr, thvm, thlm_pert_pos_rt,  & ! In
                 rtm_pert_pos_rt, em, Lscale_max, p_in_Pa,                   & ! In
                 exner, thv_ds_zt, mu_pert_pos_rt, lmin, l_implemented,      & ! In
+                stats_metadata,                                             & ! In
                 Lscale_pert_1, Lscale_up, Lscale_down )                       ! Out
 
       call compute_mixing_length( nz, ngrdcol, gr, thvm, thlm_pert_neg_rt,  & ! In
                 rtm_pert_neg_rt, em, Lscale_max, p_in_Pa,                   & ! In
                 exner, thv_ds_zt, mu_pert_neg_rt, lmin, l_implemented,      & ! In
+                stats_metadata,                                             & ! In
                 Lscale_pert_2, Lscale_up, Lscale_down )                       ! Out
     else
       !$acc parallel loop gang vector collapse(2) default(present)
@@ -1172,15 +1183,15 @@ module mixing_length
       !$acc end parallel loop
     end if ! l_avg_Lscale
 
-    if ( l_stats_samp ) then
+    if ( stats_metadata%l_stats_samp ) then
       !$acc update host( Lscale_pert_1, Lscale_pert_2 )
       do i = 1, ngrdcol
-        call stat_update_var( iLscale_pert_1, Lscale_pert_1(i,:), & ! intent(in)
+        call stat_update_var( stats_metadata%iLscale_pert_1, Lscale_pert_1(i,:), & ! intent(in)
                               stats_zt(i) )                       ! intent(inout)
-        call stat_update_var( iLscale_pert_2, Lscale_pert_2(i,:), & ! intent(in)
+        call stat_update_var( stats_metadata%iLscale_pert_2, Lscale_pert_2(i,:), & ! intent(in)
                               stats_zt(i) )                       ! intent(inout)
       end do
-    end if ! l_stats_samp
+    end if ! stats_metadata%l_stats_samp
 
 
     ! ********** NOTE: **********
@@ -1194,6 +1205,7 @@ module mixing_length
     call compute_mixing_length( nz, ngrdcol, gr, thvm, thlm,            & ! In
                           rtm, em, Lscale_max, p_in_Pa,                 & ! In
                           exner, thv_ds_zt, newmu, lmin, l_implemented, & ! In
+                          stats_metadata,                               & ! In
                           Lscale, Lscale_up, Lscale_down )                ! Out
 
     if ( l_avg_Lscale ) then
@@ -1245,7 +1257,7 @@ module mixing_length
                         rtm, thlm, thvm, & !intent in
                         rcm, ice_supersat_frac, &! intent in
                         em, sqrt_em_zt, & ! intent in
-                        ufmin, z_displace, tau_const, & ! intent in
+                        ufmin, tau_const, & ! intent in
                         sfc_elevation, Lscale_max, & ! intent in
                         clubb_params, & ! intent in
                         l_e3sm_config, & ! intent in
@@ -1297,7 +1309,7 @@ module mixing_length
         core_rknd
 
     use parameter_indices, only: &
-        nparams,                    & ! Variable(s)
+        nparams,                     & ! Variable(s)
         iC_invrs_tau_bkgnd,          &
         iC_invrs_tau_shear,          &
         iC_invrs_tau_sfc,            &
@@ -1310,7 +1322,8 @@ module mixing_length
         iC_invrs_tau_wpxp_Ri,        &
         ialtitude_threshold,         &
         ibv_efold,                   &
-        iwpxp_Ri_exp
+        iwpxp_Ri_exp,                &
+        iz_displace
 
     use error_code, only: &
       err_code, &
@@ -1346,7 +1359,6 @@ module mixing_length
 
     real(kind = core_rknd), intent(in) :: &
       ufmin,         &
-      z_displace,    &
       tau_const
       
     real(kind = core_rknd), dimension(ngrdcol), intent(in) :: &
@@ -1422,7 +1434,8 @@ module mixing_length
       C_invrs_tau_N2_clear_wp3,   &
       C_invrs_tau_wpxp_Ri,        &
       altitude_threshold,         &
-      wpxp_Ri_exp
+      wpxp_Ri_exp,                &
+      z_displace
 
     real( kind = core_rknd ), parameter :: &
       min_max_smth_mag = 1.0e-9_core_rknd, &  ! "base" smoothing magnitude before scaling 
@@ -1467,6 +1480,9 @@ module mixing_length
     !$acc            create( Ri_zm_clipped, ddzt_umvm_sqd_clipped, &
     !$acc                    tau_zm_unclipped, tau_zt_unclipped, Ri_zm_smooth, em_clipped, &
     !$acc                    tmp_calc, tmp_calc_max, tmp_calc_min_max )
+
+    ! Unpack z_displace first because it's needed for the error check
+    z_displace = clubb_params(iz_displace)
 
     !$acc parallel loop gang vector default(present)
     do i = 1, ngrdcol
@@ -1704,7 +1720,7 @@ module mixing_length
       !$acc parallel loop gang vector collapse(2) default(present)
       do k = 1, nz
         do i = 1, ngrdcol
-          tmp_calc(i,k) = one - ice_supersat_frac_zm(i,k) / 0.007_core_rknd
+          tmp_calc(i,k) = one - ice_supersat_frac_zm(i,k) / 0.001_core_rknd
         end do
       end do
       !$acc end parallel loop
@@ -1731,7 +1747,7 @@ module mixing_length
           brunt_freq_out_cloud(i,k) &
             = brunt_freq_pos(i,k) &
                 * min(one, max(zero_threshold, &
-                               one - ( ( ice_supersat_frac_zm(i,k) / 0.007_core_rknd) )))
+                               one - ( ( ice_supersat_frac_zm(i,k) / 0.001_core_rknd) )))
         end do
       end do
       !$acc end parallel loop
@@ -1758,7 +1774,8 @@ module mixing_length
                                 + C_invrs_tau_N2_wp2 * brunt_freq_pos(i,k)
 
         invrs_tau_wp2_zm(i,k) = invrs_tau_no_N2_zm(i,k) + &
-                                C_invrs_tau_N2_wp2 * brunt_freq_pos(i,k)
+                                C_invrs_tau_N2 * brunt_freq_pos(i,k) + &
+                                C_invrs_tau_N2_wp2 * brunt_freq_out_cloud(i,k)
 
         invrs_tau_zm(i,k) = invrs_tau_no_N2_zm(i,k) + C_invrs_tau_N2 * brunt_freq_pos(i,k)
       end do
@@ -1846,7 +1863,8 @@ module mixing_length
       do k = 1, nz
         do i = 1, ngrdcol
           invrs_tau_xp2_zm(i,k) = invrs_tau_no_N2_zm(i,k) + &
-                                  C_invrs_tau_N2_xp2 * brunt_freq_pos(i,k)
+                                  C_invrs_tau_N2 * brunt_freq_pos(i,k) + &
+                                  C_invrs_tau_N2_xp2 * brunt_freq_out_cloud(i,k)
         end do
       end do
       !$acc end parallel loop
@@ -1907,10 +1925,10 @@ module mixing_length
     if ( l_smooth_min_max ) then
 
       Ri_zm_smooth = smooth_max( nz, ngrdcol, Ri_zm, zero, &
-                                  12.0_core_rknd * min_max_smth_mag )
+                                  2.0_core_rknd * min_max_smth_mag )
 
-      Ri_zm_smooth = smooth_min( nz, ngrdcol, Ri_zm_smooth**wpxp_Ri_exp, 12.0_core_rknd, &
-                                 12.0_core_rknd * min_max_smth_mag )
+      Ri_zm_smooth = smooth_min( nz, ngrdcol, C_invrs_tau_wpxp_Ri * Ri_zm_smooth**wpxp_Ri_exp, &
+                                 2.0_core_rknd, 2.0_core_rknd * min_max_smth_mag )
 
       !$acc parallel loop gang vector collapse(2) default(present)
       do k = 1, nz
@@ -1919,7 +1937,7 @@ module mixing_length
           if ( gr%zt(i,k) > altitude_threshold ) then
              invrs_tau_wpxp_zm(i,k) = invrs_tau_wpxp_zm(i,k) &
                                       * ( one + H_invrs_tau_wpxp_N2(i,k) &
-                                          * C_invrs_tau_wpxp_Ri * Ri_zm_smooth(i,k) )
+                                          * Ri_zm_smooth(i,k) )
 
           end if
         end do 
@@ -1934,8 +1952,8 @@ module mixing_length
           if ( gr%zt(i,k) > altitude_threshold ) then
              invrs_tau_wpxp_zm(i,k) = invrs_tau_wpxp_zm(i,k) &
                                       * ( one  + H_invrs_tau_wpxp_N2(i,k) & 
-                                      * C_invrs_tau_wpxp_Ri &
-                                      * min( max( Ri_zm(i,k), zero)**wpxp_Ri_exp, 12.0_core_rknd ))
+                                      * min( C_invrs_tau_wpxp_Ri &
+                                      * max( Ri_zm(i,k), zero)**wpxp_Ri_exp, 2.0_core_rknd ))
           end if
         end do 
       end do

@@ -160,9 +160,10 @@ module clubb_api_module
     iC_invrs_tau_N2_wp2, iC_invrs_tau_N2_xp2, iC_invrs_tau_N2_wpxp, &
     iC_invrs_tau_N2_clear_wp3, ialtitude_threshold, irtp2_clip_coef, &
     iRichardson_num_min, iRichardson_num_max, iwpxp_Ri_exp, &
-    ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold, iC_wp2_pr_dfsn, &
-    ixp3_coef_slope, ixp3_coef_base, iC_wp3_pr_tp, iC_invrs_tau_wpxp_N2_thresh, &
-    iC_invrs_tau_wpxp_Ri, iz_displace
+    ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold, iz_displace, &
+    iC_wp2_pr_dfsn, ixp3_coef_slope, ixp3_coef_base, iC_wp3_pr_tp, &
+    iC_invrs_tau_wpxp_N2_thresh, iC_invrs_tau_wpxp_Ri
+
 
 
   use pdf_parameter_module, only : &
@@ -198,19 +199,6 @@ module clubb_api_module
   use stats_rad_zt_module, only : &
     nvarmax_rad_zt  ! Maximum variables allowed
 
-  use stats_variables, only : &
-    l_stats_last, & ! Last time step of output period
-    stats_tsamp, & ! Sampling interval   [s]
-    stats_tout, & ! Output interval     [s]
-    l_output_rad_files, & ! Flag to turn off radiation statistics output
-    l_stats, & ! Main flag to turn statistics on/off
-    l_stats_samp, & ! Sample flag for current time step
-    l_grads, & ! Output to GrADS format
-    fname_rad_zt, & ! Name of the stats file for the stats_zt radiation grid fields
-    fname_rad_zm, & ! Name of the stats file for the stats_zm radiation grid fields
-    fname_sfc, & ! Name of the stats file for surface only fields
-    l_netcdf ! Output to NetCDF format
-
   use stats_zm_module, only : &
     nvarmax_zm ! Maximum variables allowed
 
@@ -219,6 +207,9 @@ module clubb_api_module
 
   use stats_sfc_module, only : &
     nvarmax_sfc
+
+  use stats_variables, only: & 
+    stats_metadata_type
 
   use grid_class, only: grid ! Type
   
@@ -243,6 +234,27 @@ module clubb_api_module
 
   use advance_clubb_core_module, only: &
     setup_clubb_core_api => setup_clubb_core
+
+  use fill_holes, only : &
+    fill_holes_driver_api => fill_holes_driver
+
+  use stats_rad_zm_module, only : &
+    stats_init_rad_zm_api => stats_init_rad_zm
+
+  use stats_rad_zt_module, only : &
+   stats_init_rad_zt_api => stats_init_rad_zt
+
+  use stats_zm_module, only : &
+   stats_init_zm_api => stats_init_zm
+
+  use stats_zt_module, only : &
+   stats_init_zt_api => stats_init_zt
+
+  use stats_sfc_module, only : &
+   stats_init_sfc_api => stats_init_sfc
+
+  use stats_clubb_utilities, only : &
+    stats_begin_timestep_api => stats_begin_timestep
 
   use stats_type, only: stats ! Type
 
@@ -283,11 +295,9 @@ module clubb_api_module
         iC_invrs_tau_N2_wp2, iC_invrs_tau_N2_xp2, iC_invrs_tau_N2_wpxp, &
         iC_invrs_tau_N2_clear_wp3, ialtitude_threshold, irtp2_clip_coef, &
         iRichardson_num_min, iRichardson_num_max, iwpxp_Ri_exp, &
-        ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold, iC_wp2_pr_dfsn, &
-        ixp3_coef_slope, ixp3_coef_base, iC_wp3_pr_tp, iC_invrs_tau_wpxp_N2_thresh, &
-        iC_invrs_tau_wpxp_Ri, iz_displace
-
-
+        ia3_coef_min, ia_const, iCx_min, iCx_max, ibv_efold, iz_displace, &
+        iC_wp2_pr_dfsn, ixp3_coef_slope, ixp3_coef_base, iC_wp3_pr_tp, &
+        iC_invrs_tau_wpxp_N2_thresh, iC_invrs_tau_wpxp_Ri
 
 
   public &
@@ -362,12 +372,7 @@ module clubb_api_module
     stats_begin_timestep_api, &
     stats_end_timestep_api, &
     stats_finalize_api, &
-    stats_init_api, &
-    l_stats, &
-    l_stats_last, &
-    l_stats_samp, &
-    stats_tsamp, &
-    stats_tout
+    stats_init_api
 
   public :: &
     calculate_thlp2_rad_api, params_list, &
@@ -456,20 +461,15 @@ module clubb_api_module
     clubb_i, &
     clubb_j, &
     compute_current_date_api, &
-    fname_rad_zm, &
-    fname_rad_zt, &
-    fname_sfc, &
     gregorian2julian_day_api, &
-    l_grads, &
-    l_netcdf, &
-    l_output_rad_files, &
     leap_year_api, &
     nvarmax_rad_zm, &
     nvarmax_rad_zt, &
     nvarmax_sfc, &
     nvarmax_zm, &
     nvarmax_zt
-    public &
+
+  public &
     nparams, &
     nu_vertical_res_dep, &
     setup_parameters_api, &
@@ -480,7 +480,8 @@ module clubb_api_module
     stats_init_rad_zt_api, &
     stats_init_sfc_api, &
     stats_init_zm_api, &
-    stats_init_zt_api
+    stats_init_zt_api, &
+    stats_metadata_type
 
   public &
     ! Needed to use the configurable CLUBB flags
@@ -571,6 +572,7 @@ contains
     host_dx, host_dy, &                                     ! intent(in)
     clubb_params, nu_vert_res_dep, lmin, &                  ! intent(in)
     clubb_config_flags, &                                   ! intent(in)
+    stats_metadata, &                                       ! intent(in)
     stats_zt, stats_zm, stats_sfc, &                        ! intent(inout)
     um, vm, upwp, vpwp, up2, vp2, up3, vp3, &               ! intent(inout)
     thlm, rtm, wprtp, wpthlp, &                             ! intent(inout)
@@ -624,13 +626,9 @@ contains
 
     implicit none
 
-    type(stats), target, intent(inout) :: &
-      stats_zt, &
-      stats_zm, &
-      stats_sfc
-
+    !------------------------- Input Variables -------------------------
     type(grid), target, intent(in) :: gr
-      !!! Input Variables
+
     logical, intent(in) ::  &
       l_implemented ! Is this part of a larger host model (T/F) ?
 
@@ -734,8 +732,15 @@ contains
     type( clubb_config_flags_type ), intent(in) :: &
       clubb_config_flags ! Derived type holding all configurable CLUBB flags
 
+    type (stats_metadata_type), intent(in) :: &
+      stats_metadata
 
-    !!! Input/Output Variables
+    !------------------------- Input/Output Variables -------------------------
+    type(stats), target, intent(inout) :: &
+      stats_zt, &
+      stats_zm, &
+      stats_sfc
+
     ! These are prognostic or are planned to be in the future
     real( kind = core_rknd ), intent(inout), dimension(gr%nz) ::  &
       um,      & ! u mean wind component (thermodynamic levels)   [m/s]
@@ -817,6 +822,7 @@ contains
       real( kind = core_rknd ), intent(inout), dimension(gr%nz,edsclr_dim) :: &
       edsclrm   ! Eddy passive scalar mean (thermo. levels)   [units vary]
 
+    !------------------------- Output Variables -------------------------
     real( kind = core_rknd ), intent(out), dimension(gr%nz) ::  &
       rcm_in_layer, & ! rcm in cloud layer                              [kg/kg]
       cloud_cover     ! cloud cover                                     [-]
@@ -853,7 +859,7 @@ contains
 #endif
 
 
-    ! -------------- Local Variables --------------
+    !------------------------- Local Variables -------------------------
     type(stats), dimension(1) :: &
       stats_zt_col, &
       stats_zm_col, &
@@ -941,8 +947,6 @@ contains
       host_dx_col,  & ! East-West horizontal grid spacing     [m]
       host_dy_col     ! North-South horizontal grid spacing   [m]
 
-
-    !!! Input/Output Variables
     ! These are prognostic or are planned to be in the future
     real( kind = core_rknd ), dimension(1,gr%nz) ::  &
       um_col,      & ! u mean wind component (thermodynamic levels)   [m/s]
@@ -1050,6 +1054,8 @@ contains
 #endif
 
     integer :: i
+
+    !------------------------- Begin Code -------------------------
 
     fcor_col(1) = fcor
     sfc_elevation_col(1) = sfc_elevation
@@ -1187,57 +1193,58 @@ contains
     cloud_cover_col(1,:) = cloud_cover
     invrs_tau_zm_col(1,:) = invrs_tau_zm
 
-    call advance_clubb_core( gr, gr%nz, 1, &
-      l_implemented, dt, fcor_col, sfc_elevation_col, hydromet_dim, & ! intent(in)
+    call advance_clubb_core( gr, gr%nz, 1,              &
+      l_implemented, dt, fcor_col, sfc_elevation_col, hydromet_dim, &         ! intent(in)
       thlm_forcing_col, rtm_forcing_col, um_forcing_col, vm_forcing_col, &    ! intent(in)
-      sclrm_forcing_col, edsclrm_forcing_col, wprtp_forcing_col, &        ! intent(in)
-      wpthlp_forcing_col, rtp2_forcing_col, thlp2_forcing_col, &          ! intent(in)
-      rtpthlp_forcing_col, wm_zm_col, wm_zt_col, &                        ! intent(in)
+      sclrm_forcing_col, edsclrm_forcing_col, wprtp_forcing_col, &            ! intent(in)
+      wpthlp_forcing_col, rtp2_forcing_col, thlp2_forcing_col, &              ! intent(in)
+      rtpthlp_forcing_col, wm_zm_col, wm_zt_col, &                            ! intent(in)
       wpthlp_sfc_col, wprtp_sfc_col, upwp_sfc_col, vpwp_sfc_col, &            ! intent(in)
-      wpsclrp_sfc_col, wpedsclrp_sfc_col, &                           ! intent(in)
-      upwp_sfc_pert_col, vpwp_sfc_pert_col, &                         ! intent(in)
-      rtm_ref_col, thlm_ref_col, um_ref_col, vm_ref_col, ug_col, vg_col, &            ! Intent(in)
+      wpsclrp_sfc_col, wpedsclrp_sfc_col, &                                   ! intent(in)
+      upwp_sfc_pert_col, vpwp_sfc_pert_col, &                                 ! intent(in)
+      rtm_ref_col, thlm_ref_col, um_ref_col, vm_ref_col, ug_col, vg_col, &    ! Intent(in)
       p_in_Pa_col, rho_zm_col, rho_col, exner_col, &                          ! intent(in)
-      rho_ds_zm_col, rho_ds_zt_col, invrs_rho_ds_zm_col, &                ! intent(in)
+      rho_ds_zm_col, rho_ds_zt_col, invrs_rho_ds_zm_col, &                    ! intent(in)
       invrs_rho_ds_zt_col, thv_ds_zm_col, thv_ds_zt_col, hydromet_col, &      ! intent(in)
-      rfrzm_col, radf_col, &                                          ! intent(in)
+      rfrzm_col, radf_col, &                                                  ! intent(in)
 #ifdef CLUBBND_CAM
       varmu_col, &
 #endif
       wphydrometp_col, wp2hmp_col, rtphmp_col, thlphmp_col, &                 ! intent(in)
-      host_dx_col, host_dy_col, &                                     ! intent(in)
-      clubb_params, nu_vert_res_dep, lmin, &                  ! intent(in)
-      clubb_config_flags, &                                   ! intent(in)
-      stats_zt_col, stats_zm_col, stats_sfc_col, &                        ! intent(inout)
-      um_col, vm_col, upwp_col, vpwp_col, up2_col, vp2_col, up3_col, vp3_col, &               ! intent(inout)
-      thlm_col, rtm_col, wprtp_col, wpthlp_col, &                             ! intent(inout)
-      wp2_col, wp3_col, rtp2_col, rtp3_col, thlp2_col, thlp3_col, rtpthlp_col, &          ! intent(inout)
+      host_dx_col, host_dy_col, &                                             ! intent(in)
+      clubb_params, nu_vert_res_dep, lmin, &                                  ! intent(in)
+      clubb_config_flags, &                                                   ! intent(in)
+      stats_metadata, &           ! intent(in)
+      stats_zt_col, stats_zm_col, stats_sfc_col, &                                ! intent(inout)
+      um_col, vm_col, upwp_col, vpwp_col, up2_col, vp2_col, up3_col, vp3_col, &   ! intent(inout)
+      thlm_col, rtm_col, wprtp_col, wpthlp_col, &                                 ! intent(inout)
+      wp2_col, wp3_col, rtp2_col, rtp3_col, thlp2_col, thlp3_col, rtpthlp_col, &  ! intent(inout)
       sclrm_col,   &
 #ifdef GFDL
-      sclrm_trsport_only_col,  &  ! h1g, 2010-06-16      ! intent(inout)
+      sclrm_trsport_only_col,  &  ! h1g, 2010-06-16                               ! intent(inout)
 #endif
-      sclrp2_col, sclrp3_col, sclrprtp_col, sclrpthlp_col, &                  ! intent(inout)
-      wpsclrp_col, edsclrm_col, &                                     ! intent(inout)
-      rcm_col, cloud_frac_col, &                                      ! intent(inout)
-      wpthvp_col, wp2thvp_col, rtpthvp_col, thlpthvp_col, &                   ! intent(inout)
-      sclrpthvp_col, &                                            ! intent(inout)
-      wp2rtp_col, wp2thlp_col, uprcp_col, vprcp_col, rc_coef_col, wp4_col, & ! intent(inout)
-      wpup2_col, wpvp2_col, wp2up2_col, wp2vp2_col, ice_supersat_frac_col, & ! intent(inout)
-      um_pert_col, vm_pert_col, upwp_pert_col, vpwp_pert_col, &            ! intent(inout)
-      pdf_params, pdf_params_zm, &                            ! intent(inout)
-      pdf_implicit_coefs_terms, &                             ! intent(inout)
+      sclrp2_col, sclrp3_col, sclrprtp_col, sclrpthlp_col, &                      ! intent(inout)
+      wpsclrp_col, edsclrm_col, &                                                 ! intent(inout)
+      rcm_col, cloud_frac_col, &                                                  ! intent(inout)
+      wpthvp_col, wp2thvp_col, rtpthvp_col, thlpthvp_col, &                       ! intent(inout)
+      sclrpthvp_col, &                                                            ! intent(inout)
+      wp2rtp_col, wp2thlp_col, uprcp_col, vprcp_col, rc_coef_col, wp4_col, &      ! intent(inout)
+      wpup2_col, wpvp2_col, wp2up2_col, wp2vp2_col, ice_supersat_frac_col, &      ! intent(inout)
+      um_pert_col, vm_pert_col, upwp_pert_col, vpwp_pert_col, &                   ! intent(inout)
+      pdf_params, pdf_params_zm, &                                                ! intent(inout)
+      pdf_implicit_coefs_terms, &                                                 ! intent(inout)
 #ifdef GFDL
-               RH_crit_col, & !h1g, 2010-06-16                    ! intent(inout)
-               do_liquid_only_in_clubb, &                     ! intent(in)
+               RH_crit_col, & !h1g, 2010-06-16                                    ! intent(inout)
+               do_liquid_only_in_clubb, &                                         ! intent(in)
 #endif
-      Kh_zm_col, Kh_zt_col, &                                         ! intent(out)
+      Kh_zm_col, Kh_zt_col, &                                                     ! intent(out)
 #ifdef CLUBB_CAM
-               qclvar_col, &                                      ! intent(out)
+               qclvar_col, &                                                      ! intent(out)
 #endif
       thlprcp_col, wprcp_col, w_up_in_cloud_col, w_down_in_cloud_col, & ! intent(out)
-      cloudy_updraft_frac_col, cloudy_downdraft_frac_col, &        ! intent(out)
-      rcm_in_layer_col, cloud_cover_col, invrs_tau_zm_col, &      ! intent(out)
-      err_code_api )                                          ! intent(out)
+      cloudy_updraft_frac_col, cloudy_downdraft_frac_col, &                       ! intent(out)
+      rcm_in_layer_col, cloud_cover_col, invrs_tau_zm_col, &                      ! intent(out)
+      err_code_api )                                                              ! intent(out)
     
     
     ! The following does not work for stats 
@@ -1246,7 +1253,7 @@ contains
     !     stats_sfc = stats_sfc_col(1)
     ! because of some mysterious pointer issue. However, the only thing that 
     ! updates in stats is the field values, so we can copy only those instead.
-    if ( l_stats ) then 
+    if ( stats_metadata%l_stats ) then 
       stats_zm%accum_field_values = stats_zm_col(1)%accum_field_values
       stats_zm%accum_num_samples = stats_zm_col(1)%accum_num_samples
       
@@ -1348,6 +1355,7 @@ contains
     host_dx, host_dy, &                                     ! intent(in)
     clubb_params, nu_vert_res_dep, lmin, &                  ! intent(in)
     clubb_config_flags, &                                   ! intent(in)
+    stats_metadata, &                                       ! intent(in)
     stats_zt, stats_zm, stats_sfc, &                        ! intent(inout)
     um, vm, upwp, vpwp, up2, vp2, up3, vp3, &               ! intent(inout)
     thlm, rtm, wprtp, wpthlp, &                             ! intent(inout)
@@ -1390,21 +1398,16 @@ contains
     use model_flags, only: &
         clubb_config_flags_type
 
-
     implicit none
-    
+
+    !------------------------ Input Variables ------------------------
     integer, intent(in) :: &
       nz, &
       ngrdcol   ! Number of grid columns
 
-    type(stats), target, intent(inout), dimension(ngrdcol) :: &
-      stats_zt, &
-      stats_zm, &
-      stats_sfc
+    type(grid), target, intent(in) :: &
+      gr
 
-    type(grid), target, intent(in) :: gr
-    
-      !!! Input Variables
     logical, intent(in) ::  &
       l_implemented ! Is this part of a larger host model (T/F) ?
 
@@ -1418,7 +1421,6 @@ contains
     integer, intent(in) :: &
       hydromet_dim      ! Total number of hydrometeors          [#]
 
-    ! Input Variables
     real( kind = core_rknd ), intent(in), dimension(ngrdcol,nz) ::  &
       thlm_forcing,    & ! theta_l forcing (thermodynamic levels)    [K/s]
       rtm_forcing,     & ! r_t forcing (thermodynamic levels)        [(kg/kg)/s]
@@ -1508,8 +1510,15 @@ contains
     type( clubb_config_flags_type ), intent(in) :: &
       clubb_config_flags ! Derived type holding all configurable CLUBB flags
 
+    type (stats_metadata_type), intent(in) :: &
+      stats_metadata
 
-    !!! Input/Output Variables
+    !------------------------ Input/Output Variables ------------------------
+    type(stats), target, intent(inout), dimension(ngrdcol) :: &
+      stats_zt, &
+      stats_zm, &
+      stats_sfc
+
     ! These are prognostic or are planned to be in the future
     real( kind = core_rknd ), intent(inout), dimension(ngrdcol,nz) ::  &
       um,      & ! u mean wind component (thermodynamic levels)   [m/s]
@@ -1588,9 +1597,11 @@ contains
       sclrm_trsport_only  ! Passive scalar concentration due to pure transport [{units vary}/s]
 #endif
 
-      real( kind = core_rknd ), intent(inout), dimension(ngrdcol,nz,edsclr_dim) :: &
-      edsclrm   ! Eddy passive scalar mean (thermo. levels)   [units vary]
+    real( kind = core_rknd ), intent(inout), dimension(ngrdcol,nz,edsclr_dim) :: &
+    edsclrm   ! Eddy passive scalar mean (thermo. levels)   [units vary]
 
+
+    !------------------------ Output Variables ------------------------
     real( kind = core_rknd ), intent(out), dimension(ngrdcol,nz) ::  &
       rcm_in_layer, & ! rcm in cloud layer                              [kg/kg]
       cloud_cover     ! cloud cover                                     [-]
@@ -1616,7 +1627,6 @@ contains
     real( kind = core_rknd ), dimension(ngrdcol,nz), intent(out) :: &
       thlprcp    ! thl'rc'              [K kg/kg]
 
-    !!! Output Variable 
     integer, intent(inout) :: err_code_api ! Diagnostic, for if some calculation goes amiss.
 
 #ifdef GFDL
@@ -1647,6 +1657,7 @@ contains
       host_dx, host_dy, &                                     ! intent(in)
       clubb_params, nu_vert_res_dep, lmin, &                  ! intent(in)
       clubb_config_flags, &                                   ! intent(in)
+      stats_metadata, &                                       ! intent(in)
       stats_zt, stats_zm, stats_sfc, &                        ! intent(inout)
       um, vm, upwp, vpwp, up2, vp2, up3, vp3, &               ! intent(inout)
       thlm, rtm, wprtp, wpthlp, &                             ! intent(inout)
@@ -1853,61 +1864,6 @@ contains
     clubb_at_least_debug_level_api = clubb_at_least_debug_level( &
       level )
   end function clubb_at_least_debug_level_api
-
-  !================================================================================================
-  ! fill_holes_driver - Fills holes between same-phase hydrometeors(i.e. for frozen hydrometeors).
-  !================================================================================================
-
-  subroutine fill_holes_driver_api( gr, &
-    nz, dt, hydromet_dim,        & ! Intent(in)
-    l_fill_holes_hm,             & ! Intent(in)
-    rho_ds_zm, rho_ds_zt, exner, & ! Intent(in)
-    stats_zt, &                    ! intent(inout)
-    thlm_mc, rvm_mc, hydromet )    ! Intent(inout)
-
-    use fill_holes, only : fill_holes_driver
-
-    
-
-    implicit none
-
-    type(stats), target, intent(inout) :: &
-      stats_zt
-
-    type(grid), target, intent(in) :: gr
-
-    intrinsic :: trim
-
-    ! Input Variables
-    integer, intent(in) :: hydromet_dim, nz
-
-    logical, intent(in) :: l_fill_holes_hm
-
-    real( kind = core_rknd ), intent(in) ::  &
-      dt           ! Timestep         [s]
-
-    real( kind = core_rknd ), dimension(nz), intent(in) :: &
-      rho_ds_zm, & ! Dry, static density on momentum levels   [kg/m^3]
-      rho_ds_zt    ! Dry, static density on thermo. levels    [kg/m^3]
-
-    real( kind = core_rknd ), dimension(nz), intent(in) :: &
-      exner  ! Exner function                                       [-]
-
-    ! Input/Output Variables
-    real( kind = core_rknd ), dimension(nz, hydromet_dim), intent(inout) :: &
-      hydromet
-
-    real( kind = core_rknd ), dimension(nz), intent(inout) :: &
-      rvm_mc,  & ! Microphysics contributions to vapor water            [kg/kg/s]
-      thlm_mc    ! Microphysics contributions to liquid potential temp. [K/s]
-
-    call fill_holes_driver( gr,    & ! intent(in)
-      nz, dt, hydromet_dim,        & ! Intent(in)
-      l_fill_holes_hm,             & ! Intent(in)
-      rho_ds_zm, rho_ds_zt, exner, & ! Intent(in)
-      stats_zt,                    & ! intent(inout)
-      thlm_mc, rvm_mc, hydromet )    ! Intent(inout)
-  end subroutine fill_holes_driver_api
 
   !================================================================================================
   ! fill_holes_vertical - clips values of 'field' that are below 'threshold' as much as possible.
@@ -2179,7 +2135,7 @@ contains
   subroutine setup_grid_api_single_col( nzmax, sfc_elevation, l_implemented, &
                                         grid_type, deltaz, zm_init, zm_top, &
                                         momentum_heights, thermodynamic_heights, &
-                                        gr, begin_height, end_height )
+                                        gr )
                             
     use grid_class, only: & 
         grid, & ! Type
@@ -2209,10 +2165,6 @@ contains
       momentum_heights,   & ! Momentum level altitudes (input)      [m]
       thermodynamic_heights ! Thermodynamic level altitudes (input) [m]
 
-    integer, intent(out) :: &
-      begin_height, &  ! Lower bound for *_heights arrays [-]
-      end_height       ! Upper bound for *_heights arrays [-]
-    
     real( kind = core_rknd ), dimension(1) ::  &
       sfc_elevation_col  ! Elevation of ground level    [m AMSL]
       
@@ -2232,10 +2184,10 @@ contains
     momentum_heights_col(1,:)       = momentum_heights
     thermodynamic_heights_col(1,:)  = thermodynamic_heights
 
-    call setup_grid( nzmax, 1, sfc_elevation_col, l_implemented,     & ! intent(in)
-                     grid_type, deltaz_col, zm_init_col, zm_top_col,      & ! intent(in)
+    call setup_grid( nzmax, 1, sfc_elevation_col, l_implemented,      & ! intent(in)
+                     grid_type, deltaz_col, zm_init_col, zm_top_col,  & ! intent(in)
                      momentum_heights_col, thermodynamic_heights_col, & ! intent(in)
-                     gr, begin_height, end_height             ) ! intent(out)
+                     gr )                                               ! intent(out)
 
   end subroutine setup_grid_api_single_col
   
@@ -2245,7 +2197,7 @@ contains
   subroutine setup_grid_api_multi_col( nzmax, ngrdcol, sfc_elevation, l_implemented, &
                                        grid_type, deltaz, zm_init, zm_top, &
                                        momentum_heights, thermodynamic_heights, &
-                                       gr, begin_height, end_height )
+                                       gr )
                             
     use grid_class, only: & 
         grid, & ! Type
@@ -2276,15 +2228,11 @@ contains
       momentum_heights,   & ! Momentum level altitudes (input)      [m]
       thermodynamic_heights ! Thermodynamic level altitudes (input) [m]
 
-    integer, intent(out) :: &
-      begin_height, &  ! Lower bound for *_heights arrays [-]
-      end_height       ! Upper bound for *_heights arrays [-]
 
-
-    call setup_grid( nzmax, ngrdcol, sfc_elevation, l_implemented,  & ! intent(in)
-                     grid_type, deltaz, zm_init, zm_top,            & ! intent(in)
-                     momentum_heights, thermodynamic_heights,       & ! intent(in)
-                     gr, begin_height, end_height )                   ! intent(out)
+    call setup_grid( nzmax, ngrdcol, sfc_elevation, l_implemented, & ! intent(in)
+                     grid_type, deltaz, zm_init, zm_top,           & ! intent(in)
+                     momentum_heights, thermodynamic_heights,      & ! intent(in)
+                     gr )                                            ! intent(out)
 
   end subroutine setup_grid_api_multi_col
 
@@ -2451,10 +2399,12 @@ contains
   ! setup_parameters - Sets up model parameters for a single column
   !================================================================================================
   subroutine setup_parameters_api_single_col( &
-             deltaz, params, nzmax, &
-             grid_type, momentum_heights, thermodynamic_heights, &
+             deltaz, params, gr, grid_type, &
              l_prescribed_avg_deltaz, &
              lmin, nu_vert_res_dep, err_code_api )
+
+    use grid_class, only: &
+        grid    ! Type(s)
 
     use parameters_tunable, only: &
         setup_parameters
@@ -2472,7 +2422,8 @@ contains
       params  ! Tuneable model parameters      [-]
 
     ! Grid definition
-    integer, intent(in) :: nzmax  ! Vertical grid levels            [#]
+    type(grid), target, intent(in) :: &
+      gr
 
     ! If CLUBB is running on its own, this option determines
     ! if it is using:
@@ -2484,19 +2435,6 @@ contains
     !    momentum grid levels (with thermodynamic levels set
     !    halfway between momentum levels).
     integer, intent(in) :: grid_type
-
-    ! If the CLUBB parameterization is implemented in a host model,
-    ! it needs to use the host model's momentum level altitudes
-    ! and thermodynamic level altitudes.
-    ! If the CLUBB model is running by itself, but is using a
-    ! stretched grid entered on thermodynamic levels (grid_type = 2),
-    ! it needs to use the thermodynamic level altitudes as input.
-    ! If the CLUBB model is running by itself, but is using a
-    ! stretched grid entered on momentum levels (grid_type = 3),
-    ! it needs to use the momentum level altitudes as input.
-    real( kind = core_rknd ), intent(in), dimension(nzmax) :: &
-      momentum_heights,      & ! Momentum level altitudes (input)      [m]
-      thermodynamic_heights    ! Thermodynamic level altitudes (input) [m]
 
     logical, intent(in) :: &
       l_prescribed_avg_deltaz ! used in adj_low_res_nu. If .true., avg_deltaz = deltaz
@@ -2512,20 +2450,13 @@ contains
       err_code_api ! Error condition 
       
       
-    real( kind = core_rknd ), dimension(1,nzmax) :: &
-      momentum_heights_col,      & ! Momentum level altitudes (input)      [m]
-      thermodynamic_heights_col    ! Thermodynamic level altitudes (input) [m]
-      
     real( kind = core_rknd ), dimension(1) ::  &
       deltaz_col  ! Change per height level        [m]
 
-    momentum_heights_col(1,:) = momentum_heights
-    thermodynamic_heights_col(1,:) = thermodynamic_heights
     deltaz_col(1) = deltaz
 
     call setup_parameters( & 
-              deltaz_col, params, nzmax, 1, &
-              grid_type, momentum_heights, thermodynamic_heights, &
+              deltaz_col, params, gr, 1, grid_type, &
               l_prescribed_avg_deltaz, &
               lmin, nu_vert_res_dep, err_code_api )
 
@@ -2536,10 +2467,12 @@ contains
   !================================================================================================
   
   subroutine setup_parameters_api_multi_col( &
-             deltaz, params, nzmax, ngrdcol, &
-             grid_type, momentum_heights, thermodynamic_heights, &
+             deltaz, params, gr, ngrdcol, grid_type, &
              l_prescribed_avg_deltaz, &
              lmin, nu_vert_res_dep, err_code_api )
+
+    use grid_class, only: &
+        grid
 
     use parameters_tunable, only: &
         setup_parameters
@@ -2552,8 +2485,10 @@ contains
     ! Input Variables
 
     ! Grid definition
+    type(grid), target, intent(in) :: &
+      gr
+
     integer, intent(in) :: &
-      nzmax, &  ! Vertical grid levels            [#]
       ngrdcol   ! Number of grid columns          [#]
 
     real( kind = core_rknd ), dimension(ngrdcol), intent(in) ::  &
@@ -2572,19 +2507,6 @@ contains
     !    halfway between momentum levels).
     integer, intent(in) :: grid_type
 
-    ! If the CLUBB parameterization is implemented in a host model,
-    ! it needs to use the host model's momentum level altitudes
-    ! and thermodynamic level altitudes.
-    ! If the CLUBB model is running by itself, but is using a
-    ! stretched grid entered on thermodynamic levels (grid_type = 2),
-    ! it needs to use the thermodynamic level altitudes as input.
-    ! If the CLUBB model is running by itself, but is using a
-    ! stretched grid entered on momentum levels (grid_type = 3),
-    ! it needs to use the momentum level altitudes as input.
-    real( kind = core_rknd ), intent(in), dimension(ngrdcol,nzmax) :: &
-      momentum_heights,      & ! Momentum level altitudes (input)      [m]
-      thermodynamic_heights    ! Thermodynamic level altitudes (input) [m]
-
     logical, intent(in) :: &
       l_prescribed_avg_deltaz ! used in adj_low_res_nu. If .true., avg_deltaz = deltaz
 
@@ -2599,8 +2521,7 @@ contains
       err_code_api ! Error condition 
 
     call setup_parameters( & 
-              deltaz, params, nzmax, ngrdcol, &
-              grid_type, momentum_heights, thermodynamic_heights, &
+              deltaz, params, gr, ngrdcol, grid_type, &
               l_prescribed_avg_deltaz, &
               lmin, nu_vert_res_dep, err_code_api )
 
@@ -2610,8 +2531,7 @@ contains
   ! adj_low_res_nu - Adjusts values of background eddy diffusivity based on vertical grid spacing.
   !================================================================================================
 
-  subroutine adj_low_res_nu_api_single_col( nzmax, grid_type, deltaz,  & ! Intent(in)
-                                 momentum_heights, thermodynamic_heights, & ! Intent(in)
+  subroutine adj_low_res_nu_api_single_col( gr, grid_type, deltaz,  & ! Intent(in)
                                  l_prescribed_avg_deltaz, mult_coef, &  ! Intent(in)
                                  nu1, nu2, nu6, nu8, nu9, nu10, nu_hm, &  ! Intent(in)
                                  nu_vert_res_dep )  ! Intent(out)
@@ -2623,7 +2543,8 @@ contains
     ! Input Variables
 
     ! Grid definition
-    integer, intent(in) :: nzmax  ! Vertical grid levels            [#]
+    type(grid), target, intent(in) :: &
+      gr
 
     ! If CLUBB is running on it's own, this option determines
     ! if it is using:
@@ -2638,19 +2559,6 @@ contains
 
     real( kind = core_rknd ), intent(in) ::  &
       deltaz  ! Change per height level        [m]
-
-    ! If the CLUBB parameterization is implemented in a host model,
-    ! it needs to use the host model's momentum level altitudes
-    ! and thermodynamic level altitudes.
-    ! If the CLUBB model is running by itself, but is using a
-    ! stretched grid entered on thermodynamic levels (grid_type = 2),
-    ! it needs to use the thermodynamic level altitudes as input.
-    ! If the CLUBB model is running by itself, but is using a
-    ! stretched grid entered on momentum levels (grid_type = 3),
-    ! it needs to use the momentum level altitudes as input.
-    real( kind = core_rknd ), intent(in), dimension(nzmax) :: &
-      momentum_heights,      & ! Momentum level altitudes (input)      [m]
-      thermodynamic_heights    ! Thermodynamic level altitudes (input) [m]
 
     logical, intent(in) :: &
       l_prescribed_avg_deltaz ! used in adj_low_res_nu. If .true., avg_deltaz = deltaz
@@ -2673,16 +2581,9 @@ contains
     real( kind = core_rknd ), dimension(1) ::  &
       deltaz_col  ! Change per height level        [m]
       
-    real( kind = core_rknd ), dimension(1,nzmax) :: &
-      momentum_heights_col,      & ! Momentum level altitudes (input)      [m]
-      thermodynamic_heights_col    ! Thermodynamic level altitudes (input) [m]
-
     deltaz_col(1) = deltaz
-    momentum_heights_col(1,:) = momentum_heights
-    thermodynamic_heights_col(1,:) = thermodynamic_heights
 
-    call adj_low_res_nu( nzmax, 1, grid_type, deltaz_col, & ! Intent(in)
-                         momentum_heights_col, thermodynamic_heights_col, & ! Intent(in)
+    call adj_low_res_nu( gr, 1, grid_type, deltaz_col, & ! Intent(in)
                          l_prescribed_avg_deltaz, mult_coef, &  ! Intent(in)
                          nu1, nu2, nu6, nu8, nu9, nu10, nu_hm, &  ! Intent(in)
                          nu_vert_res_dep )  ! Intent(out)
@@ -2693,8 +2594,7 @@ contains
   ! adj_low_res_nu - Adjusts values of background eddy diffusivity based on vertical grid spacing.
   !================================================================================================
 
-  subroutine adj_low_res_nu_api_multi_col( nzmax, ngrdcol, grid_type, deltaz,  & ! Intent(in)
-                                 momentum_heights, thermodynamic_heights, & ! Intent(in)
+  subroutine adj_low_res_nu_api_multi_col( gr, ngrdcol, grid_type, deltaz,  & ! Intent(in)
                                  l_prescribed_avg_deltaz, mult_coef, &  ! Intent(in)
                                  nu1, nu2, nu6, nu8, nu9, nu10, nu_hm, &  ! Intent(in)
                                  nu_vert_res_dep )  ! Intent(out)
@@ -2706,8 +2606,10 @@ contains
     ! Input Variables
 
     ! Grid definition
+    type(grid), target, intent(in) :: &
+      gr
+
     integer, intent(in) :: &
-      nzmax, &  ! Vertical grid levels            [#]
       ngrdcol
 
     ! If CLUBB is running on it's own, this option determines
@@ -2723,19 +2625,6 @@ contains
 
     real( kind = core_rknd ), dimension(ngrdcol), intent(in) ::  &
       deltaz  ! Change per height level        [m]
-
-    ! If the CLUBB parameterization is implemented in a host model,
-    ! it needs to use the host model's momentum level altitudes
-    ! and thermodynamic level altitudes.
-    ! If the CLUBB model is running by itself, but is using a
-    ! stretched grid entered on thermodynamic levels (grid_type = 2),
-    ! it needs to use the thermodynamic level altitudes as input.
-    ! If the CLUBB model is running by itself, but is using a
-    ! stretched grid entered on momentum levels (grid_type = 3),
-    ! it needs to use the momentum level altitudes as input.
-    real( kind = core_rknd ), intent(in), dimension(ngrdcol,nzmax) :: &
-      momentum_heights,      & ! Momentum level altitudes (input)      [m]
-      thermodynamic_heights    ! Thermodynamic level altitudes (input) [m]
 
     logical, intent(in) :: &
       l_prescribed_avg_deltaz ! used in adj_low_res_nu. If .true., avg_deltaz = deltaz
@@ -2754,8 +2643,7 @@ contains
     type(nu_vertical_res_dep), intent(out) :: &
       nu_vert_res_dep    ! Vertical resolution dependent nu values
 
-    call adj_low_res_nu( nzmax, ngrdcol, grid_type, deltaz, & ! Intent(in)
-                         momentum_heights, thermodynamic_heights, & ! Intent(in)
+    call adj_low_res_nu( gr, ngrdcol, grid_type, deltaz, & ! Intent(in)
                          l_prescribed_avg_deltaz, mult_coef, &  ! Intent(in)
                          nu1, nu2, nu6, nu8, nu9, nu10, nu_hm, &  ! Intent(in)
                          nu_vert_res_dep )  ! Intent(out)
@@ -3069,7 +2957,7 @@ contains
     Nc_in_cloud, cloud_frac, Kh_zm, &           ! Intent(in)
     ice_supersat_frac, hydromet, wphydrometp, & ! Intent(in)
     corr_array_n_cloud, corr_array_n_below, &   ! Intent(in)
-    pdf_params, l_stats_samp, &                 ! Intent(in)
+    pdf_params, &                               ! Intent(in)
     clubb_params, &                             ! Intent(in)
     iiPDF_type, &                               ! Intent(in)
     l_use_precip_frac, &                        ! Intent(in)
@@ -3078,6 +2966,7 @@ contains
     l_calc_w_corr, &                            ! Intent(in)
     l_const_Nc_in_cloud, &                      ! Intent(in)
     l_fix_w_chi_eta_correlations, &             ! Intent(in)
+    stats_metadata, &                           ! Intent(in)
     stats_zt, stats_zm, stats_sfc, &            ! intent(inout)
     hydrometp2, &                               ! Intent(inout)
     mu_x_1_n, mu_x_2_n, &                       ! Intent(out)
@@ -3087,7 +2976,8 @@ contains
     precip_fracs,  &                            ! Intent(out)
     hydromet_pdf_params )                       ! Intent(out)
 
-    use setup_clubb_pdf_params, only : setup_pdf_parameters
+    use setup_clubb_pdf_params, only : &
+        setup_pdf_parameters
 
     use parameter_indices, only: &
         nparams    ! Variable(s)
@@ -3096,18 +2986,11 @@ contains
         err_code, &         ! Error Indicator
         clubb_fatal_error   ! Constant
 
-    
-
     implicit none
 
-    type(stats), target, intent(inout) :: &
-      stats_zt, &
-      stats_zm, &
-      stats_sfc
-
+    !----------------------- Input Variables -----------------------
     type(grid), target, intent(in) :: gr
 
-    ! Input Variables
     integer, intent(in) :: &
       nz,          & ! Number of model vertical grid levels
       pdf_dim   ! Number of variables in the correlation array
@@ -3133,9 +3016,6 @@ contains
     type(pdf_parameter), intent(in) :: &
       pdf_params    ! PDF parameters                               [units vary]
 
-    logical, intent(in) :: &
-      l_stats_samp    ! Flag to sample statistics
-
     real( kind = core_rknd ), dimension(nparams), intent(in) :: &
       clubb_params    ! Array of CLUBB's tunable parameters    [units vary]
 
@@ -3160,11 +3040,19 @@ contains
       l_const_Nc_in_cloud,          & ! Use a constant cloud droplet conc. within cloud (K&K)
       l_fix_w_chi_eta_correlations    ! Use a fixed correlation for s and t Mellor(chi/eta)
 
-    ! Input/Output Variables
+    type (stats_metadata_type), intent(in) :: &
+      stats_metadata
+
+    !----------------------- Input/Output Variables -----------------------
+    type(stats), target, intent(inout) :: &
+      stats_zt, &
+      stats_zm, &
+      stats_sfc
+
     real( kind = core_rknd ), dimension(nz,hydromet_dim), intent(inout) :: &
       hydrometp2    ! Variance of a hydrometeor (overall) (m-levs.)   [units^2]
 
-    ! Output Variables
+    !----------------------- Output Variables -----------------------
     real( kind = core_rknd ), dimension(nz,pdf_dim), intent(out) :: &
       mu_x_1_n,    & ! Mean array (normal space): PDF vars. (comp. 1) [un. vary]
       mu_x_2_n,    & ! Mean array (normal space): PDF vars. (comp. 2) [un. vary]
@@ -3188,8 +3076,7 @@ contains
     type(hydromet_pdf_parameter), dimension(nz), optional, intent(out) :: &
       hydromet_pdf_params    ! Hydrometeor PDF parameters        [units vary]
       
-    ! -------------- Local Variables --------------
-    
+    !----------------------- Local Variables -----------------------
     real( kind = core_rknd ), dimension(1,nz) :: &
       Nc_in_cloud_col,       & ! Mean (in-cloud) cloud droplet conc.       [num/kg]
       cloud_frac_col,        & ! Cloud fraction                            [-]
@@ -3227,6 +3114,8 @@ contains
       stats_zm_col, &
       stats_sfc_col
 
+    !----------------------- Begin Code -----------------------
+
     Nc_in_cloud_col(1,:) = Nc_in_cloud
     cloud_frac_col(1,:) = cloud_frac
     Kh_zm_col(1,:) = Kh_zm
@@ -3244,7 +3133,7 @@ contains
       Nc_in_cloud_col, cloud_frac_col, Kh_zm_col, &           ! Intent(in)
       ice_supersat_frac_col, hydromet_col, wphydrometp_col, & ! Intent(in)
       corr_array_n_cloud, corr_array_n_below, &               ! Intent(in)
-      pdf_params, l_stats_samp, &                             ! Intent(in)
+      pdf_params, &                                           ! Intent(in)
       clubb_params, &                                         ! Intent(in)
       iiPDF_type, &                                           ! Intent(in)
       l_use_precip_frac, &                                    ! Intent(in)
@@ -3253,6 +3142,7 @@ contains
       l_calc_w_corr, &                                        ! Intent(in)
       l_const_Nc_in_cloud, &                                  ! Intent(in)
       l_fix_w_chi_eta_correlations, &                         ! Intent(in)
+      stats_metadata, &                                       ! Intent(in)
       stats_zt_col, stats_zm_col, stats_sfc_col, &            ! Intent(inout)
       hydrometp2_col, &                                       ! Intent(inout)
       mu_x_1_n_col, mu_x_2_n_col, &                           ! Intent(out)
@@ -3270,7 +3160,7 @@ contains
     !     stats_sfc = stats_sfc_col(1)
     ! because of some mysterious pointer issue. However, the only thing that 
     ! updates in stats is the field values, so we can copy only those instead.
-    if ( l_stats ) then 
+    if ( stats_metadata%l_stats ) then 
       stats_zm%accum_field_values = stats_zm_col(1)%accum_field_values
       stats_zm%accum_num_samples = stats_zm_col(1)%accum_num_samples
       
@@ -3301,7 +3191,7 @@ contains
     Nc_in_cloud, cloud_frac, Kh_zm, &           ! Intent(in)
     ice_supersat_frac, hydromet, wphydrometp, & ! Intent(in)
     corr_array_n_cloud, corr_array_n_below, &   ! Intent(in)
-    pdf_params, l_stats_samp, &                 ! Intent(in)
+    pdf_params, &                               ! Intent(in)
     clubb_params, &                             ! Intent(in)
     iiPDF_type, &                               ! Intent(in)
     l_use_precip_frac, &                        ! Intent(in)
@@ -3310,7 +3200,8 @@ contains
     l_calc_w_corr, &                            ! Intent(in)
     l_const_Nc_in_cloud, &                      ! Intent(in)
     l_fix_w_chi_eta_correlations, &             ! Intent(in)
-    stats_zt, stats_zm, stats_sfc, &            ! intent(inout)
+    stats_metadata, &                           ! Intent(in)
+    stats_zt, stats_zm, stats_sfc, &            ! Intent(inout)
     hydrometp2, &                               ! Intent(inout)
     mu_x_1_n, mu_x_2_n, &                       ! Intent(out)
     sigma_x_1_n, sigma_x_2_n, &                 ! Intent(out)
@@ -3359,9 +3250,6 @@ contains
     type(pdf_parameter), intent(in) :: &
       pdf_params    ! PDF parameters                               [units vary]
 
-    logical, intent(in) :: &
-      l_stats_samp    ! Flag to sample statistics
-
     real( kind = core_rknd ), dimension(nparams), intent(in) :: &
       clubb_params    ! Array of CLUBB's tunable parameters    [units vary]
 
@@ -3385,6 +3273,9 @@ contains
       l_calc_w_corr,                & ! Calculate the correlations between w and the hydrometeors
       l_const_Nc_in_cloud,          & ! Use a constant cloud droplet conc. within cloud (K&K)
       l_fix_w_chi_eta_correlations    ! Use a fixed correlation for s and t Mellor(chi/eta)
+
+    type (stats_metadata_type), intent(in) :: &
+      stats_metadata
 
     ! Input/Output Variables
     real( kind = core_rknd ), dimension(ngrdcol,nz,hydromet_dim), intent(inout) :: &
@@ -3424,7 +3315,7 @@ contains
       Nc_in_cloud, cloud_frac, Kh_zm, &           ! Intent(in)
       ice_supersat_frac, hydromet, wphydrometp, & ! Intent(in)
       corr_array_n_cloud, corr_array_n_below, &   ! Intent(in)
-      pdf_params, l_stats_samp, &                 ! Intent(in)
+      pdf_params, &                               ! Intent(in)
       clubb_params, &                             ! Intent(in)
       iiPDF_type, &                               ! Intent(in)
       l_use_precip_frac, &                        ! Intent(in)
@@ -3433,6 +3324,7 @@ contains
       l_calc_w_corr, &                            ! Intent(in)
       l_const_Nc_in_cloud, &                      ! Intent(in)
       l_fix_w_chi_eta_correlations, &             ! Intent(in)
+      stats_metadata, &                           ! Intent(in)
       stats_zt, stats_zm, stats_sfc, &            ! intent(inout)
       hydrometp2, &                               ! Intent(inout)
       mu_x_1_n, mu_x_2_n, &                       ! Intent(out)
@@ -3456,22 +3348,15 @@ contains
     nzmax, nlon, nlat, gzt, gzm, nnrad_zt, &
     grad_zt, nnrad_zm, grad_zm, day, month, year, &
     lon_vals, lat_vals, time_current, delt, l_silhs_out_in, &
+    stats_metadata, &
     stats_zt, stats_zm, stats_sfc, &
     stats_lh_zt, stats_lh_sfc, &
     stats_rad_zt, stats_rad_zm )
 
-    use stats_clubb_utilities, only : stats_init
+    use stats_clubb_utilities, only : &
+      stats_init
 
     implicit none
-
-    type(stats), target, intent(inout) :: &
-      stats_zt, &
-      stats_zm, &
-      stats_sfc, &
-      stats_lh_zt, &
-      stats_lh_sfc, &
-      stats_rad_zt, &
-      stats_rad_zm
 
     ! Input Variables
     integer, intent(in) :: iunit  ! File unit for fnamelist
@@ -3526,12 +3411,25 @@ contains
     logical, intent(in) :: &
       l_silhs_out_in  ! Whether to output SILHS files (stats_lh_zt,stats_lh_sfc) [dimensionless]
 
+    type (stats_metadata_type), intent(inout) :: &
+      stats_metadata
+
+    type(stats), target, intent(inout) :: &
+      stats_zt, &
+      stats_zm, &
+      stats_sfc, &
+      stats_lh_zt, &
+      stats_lh_sfc, &
+      stats_rad_zt, &
+      stats_rad_zm
+
     call stats_init( &
       iunit, fname_prefix, fdir, l_stats_in, & ! intent(in)
       stats_fmt_in, stats_tsamp_in, stats_tout_in, fnamelist, & ! intent(in)
       nzmax, nlon, nlat, gzt, gzm, nnrad_zt, & ! intent(in)
       grad_zt, nnrad_zm, grad_zm, day, month, year, & ! intent(in)
       lon_vals, lat_vals, time_current, delt, l_silhs_out_in, & ! intent(in)
+      stats_metadata, & ! intent(inout)
       stats_zt, stats_zm, stats_sfc, & ! intent(inout)
       stats_lh_zt, stats_lh_sfc, & ! intent(inout)
       stats_rad_zt, stats_rad_zm ) ! intent(inout)
@@ -3541,35 +3439,10 @@ contains
   end subroutine stats_init_api
 
   !================================================================================================
-  ! stats_begin_timestep - Sets flags determining specific timestep info.
-  !================================================================================================
-
-  subroutine stats_begin_timestep_api( &
-    itime, stats_nsamp, stats_nout )
-
-
-    use stats_clubb_utilities, only : stats_begin_timestep
-
-    implicit none
-
-    ! External
-    intrinsic :: mod
-
-    ! Input Variable(s)
-    integer, intent(in) ::  &
-      itime,        & ! Elapsed model time       [timestep]
-      stats_nsamp,  & ! Stats sampling interval  [timestep]
-      stats_nout      ! Stats output interval    [timestep]
-
-    call stats_begin_timestep( &
-      itime, stats_nsamp, stats_nout ) ! intent(in)
-  end subroutine stats_begin_timestep_api
-
-  !================================================================================================
   ! stats_end_timestep - Calls statistics to be written to the output format.
   !================================================================================================
 
-  subroutine stats_end_timestep_api( clubb_params, &
+  subroutine stats_end_timestep_api( clubb_params, stats_metadata, &
                                      stats_zt, stats_zm, stats_sfc, &
                                      stats_lh_zt, stats_lh_sfc, &
                                      stats_rad_zt, stats_rad_zm &
@@ -3584,12 +3457,14 @@ contains
 
     use parameter_indices, only: nparams
 
-
     implicit none
 
     ! Input Variables
     real( kind = core_rknd ), dimension(nparams), intent(in) :: &
       clubb_params    ! Array of CLUBB's tunable parameters    [units vary]
+
+    type (stats_metadata_type), intent(in) :: &
+      stats_metadata
 
     type(stats), target, intent(inout) :: &
       stats_zt, &
@@ -3611,14 +3486,14 @@ contains
                             ! advance_xp2_xpyp_module.F90.
 #endif
 
-    call stats_end_timestep( clubb_params, &              ! intent(in)
+    call stats_end_timestep( clubb_params, stats_metadata,  & ! intent(in)
                              stats_zt, stats_zm, stats_sfc, & ! intent(inout)
-                             stats_lh_zt, stats_lh_sfc, & ! intent(inout)
-                             stats_rad_zt, stats_rad_zm & ! intent(inout)
+                             stats_lh_zt, stats_lh_sfc,     & ! intent(inout)
+                             stats_rad_zt, stats_rad_zm     & ! intent(inout)
 #ifdef NETCDF
-                             , l_uv_nudge, & ! Intent(in)
-                             l_tke_aniso, & ! Intent(in)
-                             l_standard_term_ta & ! Intent(in)
+                             , l_uv_nudge,                  & ! Intent(in)
+                             l_tke_aniso,                   & ! Intent(in)
+                             l_standard_term_ta             & ! Intent(in)
 #endif
                               )
 
@@ -3632,19 +3507,23 @@ contains
 
   subroutine stats_accumulate_hydromet_api( gr, &
                                             hydromet, rho_ds_zt, &
+                                            stats_metadata, &
                                             stats_zt, stats_sfc )
 
-    use stats_clubb_utilities, only : stats_accumulate_hydromet
-
-    
+    use stats_clubb_utilities, only : &
+      stats_accumulate_hydromet
 
     implicit none
+
+    type(grid), target, intent(in) :: &
+      gr
+
+    type (stats_metadata_type), intent(in) :: &
+      stats_metadata
 
     type(stats), target, intent(inout) :: &
       stats_zt, &
       stats_sfc
-
-    type(grid), target, intent(in) :: gr
 
     ! Input Variables
     real( kind = core_rknd ), dimension(gr%nz,hydromet_dim), intent(in) :: &
@@ -3655,18 +3534,22 @@ contains
 
     call stats_accumulate_hydromet( gr, & ! intent(in)
       hydromet, rho_ds_zt, & ! intent(in)
+      stats_metadata, & ! intent(in) 
       stats_zt, stats_sfc ) ! intent(inout)
+
   end subroutine stats_accumulate_hydromet_api
 
   !================================================================================================
   ! stats_finalize - Close NetCDF files and deallocate scratch space and stats file structures.
   !================================================================================================
 
-  subroutine stats_finalize_api ( stats_zt, stats_zm, stats_sfc, &
+  subroutine stats_finalize_api ( stats_metadata, &
+                                  stats_zt, stats_zm, stats_sfc, &
                                   stats_lh_zt, stats_lh_sfc, &
                                   stats_rad_zt, stats_rad_zm )
 
-    use stats_clubb_utilities, only : stats_finalize
+    use stats_clubb_utilities, only : &
+      stats_finalize
 
     implicit none
 
@@ -3679,150 +3562,16 @@ contains
       stats_rad_zt, &
       stats_rad_zm
 
-    call stats_finalize ( stats_zt, stats_zm, stats_sfc, & ! intent(inout)
+    type (stats_metadata_type), intent(inout) :: &
+      stats_metadata
+
+    call stats_finalize ( stats_metadata, & ! intent(inout)
+                          stats_zt, stats_zm, stats_sfc, & ! intent(inout)
                           stats_lh_zt, stats_lh_sfc, & ! intent(inout)
                           stats_rad_zt, stats_rad_zm ) ! intent(inout)
 
   end subroutine stats_finalize_api
 
-  !================================================================================================
-  ! stats_init_rad_zm - Initializes array indices for rad_zm variables.
-  !================================================================================================
-
-  subroutine stats_init_rad_zm_api( &
-                                    vars_rad_zm, l_error, &
-                                    stats_rad_zm )
-
-    use stats_rad_zm_module, only : stats_init_rad_zm, nvarmax_rad_zm
-
-    implicit none
-
-    type(stats), target, intent(inout) :: &
-      stats_rad_zm
-
-    ! Input Variable
-    character(len= * ), dimension(nvarmax_rad_zm), intent(in) :: vars_rad_zm
-
-    ! Input/Output Variable
-    logical, intent(inout) :: l_error
-
-    call stats_init_rad_zm( &
-      vars_rad_zm, & ! intent(in)
-      l_error, & ! intent(inout)
-      stats_rad_zm ) ! intent(inout)
-  end subroutine stats_init_rad_zm_api
-
-  !================================================================================================
-  ! stats_init_rad_zt - Initializes array indices for zt.
-  !================================================================================================
-
-  subroutine stats_init_rad_zt_api( &
-                                    vars_rad_zt, l_error, &
-                                    stats_rad_zt )
-
-    use stats_rad_zt_module, only : stats_init_rad_zt, nvarmax_rad_zt
-
-    implicit none
-
-    type(stats), target, intent(inout) :: &
-      stats_rad_zt
-
-    ! Input Variable
-    character(len= * ), dimension(nvarmax_rad_zt), intent(in) :: vars_rad_zt
-
-    ! Input/Output Variable
-    logical, intent(inout) :: l_error
-
-    call stats_init_rad_zt( &
-      vars_rad_zt, & ! intent(in)
-      l_error, & ! intent(inout)
-      stats_rad_zt ) ! intent(inout)
-
-  end subroutine stats_init_rad_zt_api
-
-  !================================================================================================
-  ! stats_init_zm - Initializes array indices for zm.
-  !================================================================================================
-
-  subroutine stats_init_zm_api( &
-                                vars_zm, l_error, &
-                                stats_zm )
-
-    use stats_zm_module, only : stats_init_zm, nvarmax_zm
-
-    implicit none
-
-    type(stats), target, intent(inout) :: &
-      stats_zm
-
-    ! Input Variable
-    character(len= * ), dimension(nvarmax_zm), intent(in) :: vars_zm ! zm variable names
-
-    ! Input / Output Variable
-    logical, intent(inout) :: l_error
-
-    call stats_init_zm( &
-      vars_zm, & ! intent(in)
-      l_error, & ! intent(inout)
-      stats_zm ) ! intent(inout)
-
-  end subroutine stats_init_zm_api
-
-  !================================================================================================
-  ! stats_init_zt - Initializes array indices for zt.
-  !================================================================================================
-
-  subroutine stats_init_zt_api( &
-                                vars_zt, l_error, &
-                                stats_zt )
-
-    use stats_zt_module, only : stats_init_zt, nvarmax_zt
-
-    implicit none
-
-    type(stats), target, intent(inout) :: &
-      stats_zt
-
-    ! Input Variable
-    character(len= * ), dimension(nvarmax_zt), intent(in) :: vars_zt
-
-    ! Input / Output Variable
-    logical, intent(inout) :: l_error
-
-    call stats_init_zt( &
-      vars_zt, & ! intent(in)
-      l_error, & ! intent(inout)
-      stats_zt ) ! intent(inout)
-
-  end subroutine stats_init_zt_api
-
-  !================================================================================================
-  ! stats_init_sfc - Initializes array indices for sfc.
-  !================================================================================================
-
-  subroutine stats_init_sfc_api( &
-                                 vars_sfc, l_error, &
-                                 stats_sfc )
-
-    use stats_sfc_module, only : stats_init_sfc, nvarmax_sfc
-
-    implicit none
-
-    type(stats), target, intent(inout) :: &
-      stats_sfc
-
-    ! Input Variable
-    character(len= * ), dimension(nvarmax_sfc), intent(in) :: vars_sfc
-
-    ! Input / Output Variable
-    logical, intent(inout) :: l_error
-
-    call stats_init_sfc( &
-      vars_sfc, & ! intent(in)
-      l_error, & ! intent(inout)
-      stats_sfc ) ! intent(inout)
-
-  end subroutine stats_init_sfc_api
 
   !================================================================================================
   ! calculate_spurious_source - Checks whether there is conservation within the column.
